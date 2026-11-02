@@ -14,7 +14,7 @@ Il titolare è il team **Army of Me**, contattabile tramite il [canale Discord d
 
 ## 2. Quali dati raccogliamo
 
-Il Bot riceve da Discord solo le interazioni con i suoi comandi (`/prova`, `/scheda`, `/partita`) e con i suoi pulsanti. **Non legge i messaggi della chat**, non accede alla lista dei membri, ai messaggi privati, all'email, all'indirizzo IP o ad altri dati del tuo account Discord.
+Il Bot riceve da Discord solo le interazioni con i suoi comandi (`/cowbot prova`, `/cowbot scheda`, `/cowbot partita`) e con i suoi pulsanti. **Non legge i messaggi della chat**, non accede alla lista dei membri, ai messaggi privati, all'email, all'indirizzo IP o ad altri dati del tuo account Discord.
 
 Il Bot **conserva** nel suo database:
 
@@ -45,7 +45,7 @@ Le interazioni passano anche attraverso Discord, che le tratta secondo la propri
 
 ## 5. Per quanto tempo
 
-- Le schede restano finché non le cancelli con `/scheda elimina` o non chiedi al titolare di cancellarle.
+- Le schede restano finché non le cancelli con `/cowbot scheda elimina` o non chiedi al titolare di cancellarle.
 - Lo stato della partita di un canale resta finché il Bot è in uso nel server. Puoi chiederne la cancellazione al titolare.
 - I dati temporanei dei tiri durano al massimo un'ora.
 - I log tecnici vengono conservati per il tempo strettamente necessario e poi eliminati.
@@ -54,7 +54,7 @@ Se il Bot viene dismesso, il database viene cancellato.
 
 ## 6. I tuoi diritti
 
-Hai diritto di chiedere l'accesso ai tuoi dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e di opporti al trattamento basato sul legittimo interesse (artt. 15–22 GDPR). Molte di queste cose puoi farle da solo con `/scheda`. Per tutto il resto scrivi nel [canale Discord del team](https://discord.gg/Xe86XD6K96) indicando il tuo ID utente Discord: risponderemo entro un mese.
+Hai diritto di chiedere l'accesso ai tuoi dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e di opporti al trattamento basato sul legittimo interesse (artt. 15–22 GDPR). Molte di queste cose puoi farle da solo con `/cowbot scheda`. Per tutto il resto scrivi nel [canale Discord del team](https://discord.gg/Xe86XD6K96) indicando il tuo ID utente Discord: risponderemo entro un mese.
 
 Se ritieni che il trattamento violi il GDPR, puoi proporre reclamo al [Garante per la protezione dei dati personali](https://www.garanteprivacy.it) o all'autorità del tuo Paese.
 

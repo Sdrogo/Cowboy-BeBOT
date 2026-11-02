@@ -4,9 +4,9 @@ Bot Discord per giocare a **Cowboy Bebop – Il Gioco di Ruolo**. Tira le Prove 
 
 ## Cosa fa
 
-- **`/prova`** tira una Prova con il personaggio attivo. La riserva si calcola da sola: dadi della svolta, tratti scelti (con autocompletamento), Genere, Cartucce di *farsi coinvolgere*, Vantaggio e Svantaggio. Il risultato arriva come immagine, con i pulsanti per spingersi al limite e assorbire shock (ferendo un tratto o segnando una Cartuccia). Solo chi ha tirato può usarli.
-- **`/scheda`** gestisce i personaggi. Ogni utente Discord può averne più di uno e passare dall'uno all'altro con `/scheda usa`. Contiene Groove, concept, Ricordo, tratti per Approccio (3 esagoni ciascuno, più 3 per il MONO), ferite, Cartucce, Ritmo e Fardelli.
-- **`/partita`** tiene svolta, Difficoltà, Genere e shock minimo del canale.
+- **`/cowbot prova`** tira una Prova con il personaggio attivo. La riserva si calcola da sola: dadi della svolta, tratti scelti (con autocompletamento), Genere, Cartucce di *farsi coinvolgere*, Vantaggio e Svantaggio. Il risultato arriva come immagine, con i pulsanti per spingersi al limite e assorbire shock (ferendo un tratto o segnando una Cartuccia). Solo chi ha tirato può usarli.
+- **`/cowbot scheda`** gestisce i personaggi. Ogni utente Discord può averne più di uno e passare dall'uno all'altro con `/cowbot scheda usa`. Contiene Groove, concept, Ricordo, tratti per Approccio (3 esagoni ciascuno, più 3 per il MONO), ferite, Cartucce, Ritmo e Fardelli.
+- **`/cowbot partita`** tiene svolta, Difficoltà, Genere e shock minimo del canale.
 
 Le regole implementate e le scelte sui punti ambigui del manuale sono nella specifica condivisa nel progetto.
 
