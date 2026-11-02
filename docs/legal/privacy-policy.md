@@ -10,7 +10,7 @@ This policy explains what data **Cowboy BeBOT** (the "Bot") processes, why, and 
 
 ## 1. Data controller
 
-The controller is the **Army of Me** team, reachable through the [team's Discord channel]({{LINK_DISCORD_TEAM}}).
+The controller is the **Army of Me** team, reachable through the [team's Discord channel](https://discord.gg/Xe86XD6K96).
 
 ## 2. What we collect
 
@@ -54,7 +54,7 @@ If the Bot is shut down, the database is deleted.
 
 ## 6. Your rights
 
-You have the right to access, rectify and erase your data, to restrict processing, to data portability, and to object to processing based on legitimate interest (Arts. 15–22 GDPR). You can do much of this yourself with `/scheda`. For anything else, write in the [team's Discord channel]({{LINK_DISCORD_TEAM}}) with your Discord user ID: we will reply within one month.
+You have the right to access, rectify and erase your data, to restrict processing, to data portability, and to object to processing based on legitimate interest (Arts. 15–22 GDPR). You can do much of this yourself with `/scheda`. For anything else, write in the [team's Discord channel](https://discord.gg/Xe86XD6K96) with your Discord user ID: we will reply within one month.
 
 If you believe the processing breaches the GDPR, you can lodge a complaint with the Italian [Garante per la protezione dei dati personali](https://www.garanteprivacy.it) or with the authority in your country.
 

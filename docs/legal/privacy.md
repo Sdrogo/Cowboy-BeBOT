@@ -10,7 +10,7 @@ Questa informativa spiega quali dati tratta **Cowboy BeBOT** (il "Bot"), perché
 
 ## 1. Titolare del trattamento
 
-Il titolare è il team **Army of Me**, contattabile tramite il [canale Discord del team]({{LINK_DISCORD_TEAM}}).
+Il titolare è il team **Army of Me**, contattabile tramite il [canale Discord del team](https://discord.gg/Xe86XD6K96).
 
 ## 2. Quali dati raccogliamo
 
@@ -54,7 +54,7 @@ Se il Bot viene dismesso, il database viene cancellato.
 
 ## 6. I tuoi diritti
 
-Hai diritto di chiedere l'accesso ai tuoi dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e di opporti al trattamento basato sul legittimo interesse (artt. 15–22 GDPR). Molte di queste cose puoi farle da solo con `/scheda`. Per tutto il resto scrivi nel [canale Discord del team]({{LINK_DISCORD_TEAM}}) indicando il tuo ID utente Discord: risponderemo entro un mese.
+Hai diritto di chiedere l'accesso ai tuoi dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e di opporti al trattamento basato sul legittimo interesse (artt. 15–22 GDPR). Molte di queste cose puoi farle da solo con `/scheda`. Per tutto il resto scrivi nel [canale Discord del team](https://discord.gg/Xe86XD6K96) indicando il tuo ID utente Discord: risponderemo entro un mese.
 
 Se ritieni che il trattamento violi il GDPR, puoi proporre reclamo al [Garante per la protezione dei dati personali](https://www.garanteprivacy.it) o all'autorità del tuo Paese.
 

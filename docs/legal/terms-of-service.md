@@ -48,4 +48,4 @@ These terms are governed by Italian law. If you use the Bot as a consumer, you k
 
 ## 9. Contact
 
-For questions or reports, write in the [Army of Me team's Discord channel]({{LINK_DISCORD_TEAM}}).
+For questions or reports, write in the [Army of Me team's Discord channel](https://discord.gg/Xe86XD6K96).

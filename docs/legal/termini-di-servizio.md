@@ -48,4 +48,4 @@ Questi termini sono regolati dalla legge italiana. Se usi il Bot come consumator
 
 ## 9. Contatti
 
-Per domande o segnalazioni scrivi nel [canale Discord del team Army of Me]({{LINK_DISCORD_TEAM}}).
+Per domande o segnalazioni scrivi nel [canale Discord del team Army of Me](https://discord.gg/Xe86XD6K96).
