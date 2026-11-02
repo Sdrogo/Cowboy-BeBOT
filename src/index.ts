@@ -2,8 +2,10 @@ import 'dotenv/config';
 import { Client, Events, GatewayIntentBits, MessageFlags, type Interaction } from 'discord.js';
 import { createContext, type Context } from './context.js';
 import { ROOT_COMMAND } from './commands/definitions.js';
-import { handlePartita } from './commands/partita.js';
+import { autocompleteOrologio, handleOrologio } from './commands/orologio.js';
+import { SESSION_PREFIX, handlePartita, handleSessionComponent } from './commands/partita.js';
 import { PROVA_PREFIX, autocompleteProva, handleProva, handleProvaComponent } from './commands/prova.js';
+import { handleRischio } from './commands/rischio.js';
 import { autocompleteScheda, handleScheda } from './commands/scheda.js';
 import { openDatabase } from './store/db.js';
 
@@ -35,16 +37,20 @@ async function route(i: Interaction, ctx: Context): Promise<void> {
     if (i.isAutocomplete()) {
       if (area === 'prova') return autocompleteProva(i, ctx);
       if (area === 'scheda') return autocompleteScheda(i, ctx);
+      if (area === 'orologio') return autocompleteOrologio(i, ctx);
       return;
     }
     if (area === 'prova') return handleProva(i, ctx);
     if (area === 'scheda') return handleScheda(i, ctx);
     if (area === 'partita') return handlePartita(i, ctx);
+    if (area === 'orologio') return handleOrologio(i, ctx);
+    if (area === 'rischio') return handleRischio(i, ctx);
     return;
   }
   if ((i.isButton() || i.isStringSelectMenu()) && i.customId.startsWith(`${PROVA_PREFIX}:`)) {
     return handleProvaComponent(i, ctx);
   }
+  if (i.isButton() && i.customId.startsWith(`${SESSION_PREFIX}:`)) return handleSessionComponent(i, ctx);
 }
 
 // `docker stop` manda SIGTERM: chiudiamo Discord e il database prima di uscire.
