@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { checkMark, genreChosenByPlayers, startingRischio, startingRitmo, threatOutcome, type Clock } from './session.js';
+import {
+  checkMark,
+  clearsCartridges,
+  closingNotes,
+  genreChosenByPlayers,
+  rollTheEnd,
+  startingRischio,
+  startingRitmo,
+  theEnd,
+  threatOutcome,
+  type Clock,
+} from './session.js';
 
 const pg = (cartridges: number, burdens: boolean[] = []) => ({ cartridges, burdens: burdens.map((resolved) => ({ resolved })) });
 
@@ -46,5 +57,28 @@ describe('orologi', () => {
     expect(threatOutcome('Dance').effects).toEqual({ minShock: 2 });
     expect(threatOutcome('Jazz').effects).toEqual({ difficultyBonus: 3, difficultyLocked: true });
     expect(threatOutcome('Rock').effects).toEqual({});
+  });
+});
+
+describe('fine Session', () => {
+  it('The End: Difficoltà 10 e doppio 6 danno fino a due successi', () => {
+    expect(theEnd([3, 3]).successes).toBe(0);
+    expect(theEnd([4, 6]).successes).toBe(1);
+    expect(theEnd([6, 6]).successes).toBe(2);
+    expect(theEnd([6, 6, 1]).title).toBe('Finalmente libero');
+    expect(rollTheEnd(2, () => 0).dice).toEqual([1, 1, 1]);
+  });
+
+  it('Personale e Climax 2 liberano le Cartucce', () => {
+    expect(clearsCartridges('personale')).toBe(true);
+    expect(clearsCartridges('climax-2')).toBe(true);
+    expect(clearsCartridges('classica')).toBe(false);
+  });
+
+  it('la Classica negativa o con ultima Cartuccia chiede un Fardello', () => {
+    const fardello = (n: string[]) => n.some((x) => x.includes('Fardello'));
+    expect(fardello(closingNotes('classica', 'positiva', false))).toBe(false);
+    expect(fardello(closingNotes('classica', 'negativa', false))).toBe(true);
+    expect(fardello(closingNotes('classica', 'positiva', true))).toBe(true);
   });
 });

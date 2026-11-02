@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { Client, Events, GatewayIntentBits, MessageFlags, type Interaction } from 'discord.js';
 import { createContext, type Context } from './context.js';
 import { ROOT_COMMAND } from './commands/definitions.js';
+import { END_PREFIX, handleEndComponent } from './commands/fine.js';
 import { autocompleteOrologio, handleOrologio } from './commands/orologio.js';
 import { SESSION_PREFIX, handlePartita, handleSessionComponent } from './commands/partita.js';
 import { PROVA_PREFIX, autocompleteProva, handleProva, handleProvaComponent } from './commands/prova.js';
@@ -51,6 +52,7 @@ async function route(i: Interaction, ctx: Context): Promise<void> {
     return handleProvaComponent(i, ctx);
   }
   if (i.isButton() && i.customId.startsWith(`${SESSION_PREFIX}:`)) return handleSessionComponent(i, ctx);
+  if (i.isButton() && i.customId.startsWith(`${END_PREFIX}:`)) return handleEndComponent(i, ctx);
 }
 
 // `docker stop` manda SIGTERM: chiudiamo Discord e il database prima di uscire.

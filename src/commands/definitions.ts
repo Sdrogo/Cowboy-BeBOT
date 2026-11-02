@@ -141,6 +141,19 @@ const partitaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
       )
       .addStringOption((o) => o.setName('titolo').setDescription('Titolo della Session').setMaxLength(100)),
   )
+  .addSubcommand((s) =>
+    s
+      .setName('fine')
+      .setDescription('Chiudi la Session in corso (Big Shot), con conferma')
+      .addStringOption((o) =>
+        o
+          .setName('esito')
+          .setDescription("Com'è finita la svolta Let's Jam!")
+          .setRequired(true)
+          .addChoices({ name: 'Positiva', value: 'positiva' }, { name: 'Negativa', value: 'negativa' }),
+      ),
+  )
+  .addSubcommand((s) => s.setName('the-end').setDescription('Finale di stagione: tira The End per il tuo personaggio'))
   .addSubcommand((s) => s.setName('stato').setDescription('Mostra svolta, Difficoltà e Genere'))
   .addSubcommand((s) =>
     s
