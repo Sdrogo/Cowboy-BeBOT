@@ -1,10 +1,15 @@
-import { SlashCommandBuilder } from 'discord.js';
+import {
+  SlashCommandBuilder,
+  type SlashCommandSubcommandBuilder,
+  type SlashCommandSubcommandGroupBuilder,
+} from 'discord.js';
 import { APPROACHES, GROOVES, GROOVE_IDS, MAX_CARTRIDGES, MAX_RITMO } from '../engine/rules.js';
 
 const approachChoices = APPROACHES.map((a) => ({ name: a, value: a }));
 const grooveChoices = GROOVE_IDS.map((id) => ({ name: GROOVES[id].name, value: id }));
 
-export const provaCommand = new SlashCommandBuilder()
+const provaSubcommand = (s: SlashCommandSubcommandBuilder) =>
+  s
   .setName('prova')
   .setDescription('Tira una Prova con il tuo personaggio attivo')
   .addStringOption((o) =>
@@ -26,7 +31,8 @@ export const provaCommand = new SlashCommandBuilder()
     o.setName('modificatore').setDescription('Dadi in più o in meno (es. Groove della Taglia)').setMinValue(-10).setMaxValue(10),
   );
 
-export const schedaCommand = new SlashCommandBuilder()
+const schedaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
+  g
   .setName('scheda')
   .setDescription('Gestisci le schede dei tuoi personaggi')
   .addSubcommand((s) =>
@@ -117,7 +123,8 @@ export const schedaCommand = new SlashCommandBuilder()
       .addBooleanOption((o) => o.setName('risolto').setDescription('Segna la X accanto al Fardello')),
   );
 
-export const partitaCommand = new SlashCommandBuilder()
+const partitaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
+  g
   .setName('partita')
   .setDescription('Stato della partita in questo canale')
   .addSubcommand((s) => s.setName('stato').setDescription('Mostra svolta, Difficoltà e Genere'))
@@ -155,4 +162,20 @@ export const partitaCommand = new SlashCommandBuilder()
       .addIntegerOption((o) => o.setName('valore').setDescription('1 o 2').setRequired(true).setMinValue(1).setMaxValue(2)),
   );
 
-export const allCommands = [provaCommand, schedaCommand, partitaCommand];
+/** Nome dell'unico slash command del bot: tutto il resto sono sottocomandi. */
+export const ROOT_COMMAND = 'cowbot';
+
+/**
+ * Un solo comando, /cowbot, con:
+ * - /cowbot prova
+ * - /cowbot scheda <azione>
+ * - /cowbot partita <azione>
+ */
+export const cowbotCommand = new SlashCommandBuilder()
+  .setName(ROOT_COMMAND)
+  .setDescription('Cowboy Bebop - Il Gioco di Ruolo: Prove, schede e partita')
+  .addSubcommand(provaSubcommand)
+  .addSubcommandGroup(schedaGroup)
+  .addSubcommandGroup(partitaGroup);
+
+export const allCommands = [cowbotCommand];

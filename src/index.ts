@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { Client, Events, GatewayIntentBits, MessageFlags, type Interaction } from 'discord.js';
 import { createContext, type Context } from './context.js';
+import { ROOT_COMMAND } from './commands/definitions.js';
 import { handlePartita } from './commands/partita.js';
 import { PROVA_PREFIX, autocompleteProva, handleProva, handleProvaComponent } from './commands/prova.js';
 import { autocompleteScheda, handleScheda } from './commands/scheda.js';
@@ -27,15 +28,18 @@ client.on(Events.InteractionCreate, (i) => {
 });
 
 async function route(i: Interaction, ctx: Context): Promise<void> {
-  if (i.isAutocomplete()) {
-    if (i.commandName === 'prova') return autocompleteProva(i, ctx);
-    if (i.commandName === 'scheda') return autocompleteScheda(i, ctx);
-    return;
-  }
-  if (i.isChatInputCommand()) {
-    if (i.commandName === 'prova') return handleProva(i, ctx);
-    if (i.commandName === 'scheda') return handleScheda(i, ctx);
-    if (i.commandName === 'partita') return handlePartita(i, ctx);
+  if (i.isAutocomplete() || i.isChatInputCommand()) {
+    if (i.commandName !== ROOT_COMMAND) return;
+    // /cowbot prova, oppure /cowbot <gruppo> <azione>.
+    const area = i.options.getSubcommandGroup(false) ?? i.options.getSubcommand();
+    if (i.isAutocomplete()) {
+      if (area === 'prova') return autocompleteProva(i, ctx);
+      if (area === 'scheda') return autocompleteScheda(i, ctx);
+      return;
+    }
+    if (area === 'prova') return handleProva(i, ctx);
+    if (area === 'scheda') return handleScheda(i, ctx);
+    if (area === 'partita') return handlePartita(i, ctx);
     return;
   }
   if ((i.isButton() || i.isStringSelectMenu()) && i.customId.startsWith(`${PROVA_PREFIX}:`)) {

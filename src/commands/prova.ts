@@ -23,7 +23,7 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
   const character = ctx.characters.active(i.user.id);
   if (!character) {
     await i.reply({
-      content: 'Non hai ancora un personaggio attivo. Creane uno con `/scheda crea`.',
+      content: 'Non hai ancora un personaggio attivo. Creane uno con `/cowbot scheda crea`.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -95,7 +95,7 @@ function intro(p: PendingProva, c: Character, confirmed: boolean): string {
     const succ = r.successes === 1 ? '1 successo' : `${r.successes} successi`;
     const shock = r.shocksLeft === 1 ? '1 shock' : `${r.shocksLeft} shock`;
     lines.push(`**${c.name}** ha ${succ} da spendere, il Big Shot ha ${shock}.`);
-    lines.push('-# Spendeteli insieme: segnare un orologio oppure ±1 alla Difficoltà (`/partita difficolta`).');
+    lines.push('-# Spendeteli insieme: segnare un orologio oppure ±1 alla Difficoltà (`/cowbot partita difficolta`).');
   }
   if (c.cartridges >= MAX_CARTRIDGES) {
     lines.push(`**Ultima Cartuccia segnata:** la svolta termina in negativo e il passato di ${c.name} bussa alla porta.`);
