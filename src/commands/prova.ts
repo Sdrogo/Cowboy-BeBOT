@@ -13,11 +13,16 @@ import {
 } from 'discord.js';
 import { absorb, canAbsorb, canPush, push, rollProva, type ProvaResult } from '../engine/prova.js';
 import { MAX_CARTRIDGES, TURNS, isApproach, usableTraitSlots, type Approach } from '../engine/rules.js';
+import type { Clock } from '../engine/session.js';
 import type { Context, PendingProva } from '../context.js';
 import { renderProvaCard } from '../render/provaCard.js';
-import { checkTraitsForProva, findTrait, setCartridges, setWound, type Character } from '../store/characters.js';
+import { SheetError, checkTraitsForProva, findTrait, setCartridges, setWound, type Character } from '../store/characters.js';
+import type { Game } from '../store/games.js';
+import { clocksAttachment, markClock } from './orologio.js';
 
 export const PROVA_PREFIX = 'prova';
+
+type Row = ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>;
 
 export async function handleProva(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
   const character = ctx.characters.active(i.user.id);
@@ -37,8 +42,14 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     .filter((v): v is string => Boolean(v && v.trim()));
   const cartridges = i.options.getInteger('cartucce') ?? 0;
   const advantage = i.options.getBoolean('vantaggio') ?? false;
-  const disadvantage = i.options.getBoolean('svantaggio') ?? false;
   const modifier = i.options.getInteger('modificatore') ?? 0;
+
+  const game = ctx.games.get(i.channelId);
+  const tags: string[] = [];
+  // Svantaggio imposto dal Big Shot spendendo Rischio (p. 34).
+  const riskDisadvantage = game.disadvantageFor === '*' || game.disadvantageFor === i.user.id;
+  if (riskDisadvantage) tags.push('SVANTAGGIO DAL RISCHIO');
+  const disadvantage = (i.options.getBoolean('svantaggio') ?? false) || riskDisadvantage;
 
   const check = checkTraitsForProva(character, traitNames, approach, disadvantage);
   const errors = [...check.errors];
@@ -50,9 +61,8 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     return;
   }
 
-  const game = ctx.games.get(i.channelId);
   const genre = game.genre !== null && check.ok.some((t) => t.slot === game.genre);
-  const result = rollProva({
+  let result = rollProva({
     turn: game.turn,
     difficulty: game.difficulty,
     approach,
@@ -65,6 +75,17 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     minShock: game.minShock,
     groove: character.groove,
   });
+  // Inseguimento: ci si spinge al limite finché non si ha almeno un successo (p. 36).
+  if (game.chase) {
+    tags.push('INSEGUIMENTO');
+    if (result.successes === 0 && canPush(result)) result = push(result);
+  }
+
+  ctx.games.save({
+    ...game,
+    provasInTurn: game.provasInTurn + 1,
+    disadvantageFor: riskDisadvantage ? null : game.disadvantageFor,
+  });
 
   // Farsi coinvolgere: le Cartucce si segnano subito (p. 69).
   let updated = character;
@@ -74,16 +95,20 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     userId: i.user.id,
     characterId: character.id,
     characterName: character.name,
+    channelId: i.channelId,
     result,
+    tags,
   });
 
-  await i.reply(await provaMessage(pending, updated, false));
+  await i.reply(await provaMessage(ctx, pending, updated, null));
 }
 
-function intro(p: PendingProva, c: Character, confirmed: boolean): string {
+// --- Messaggio ---
+
+function intro(p: PendingProva, c: Character, game: Game): string {
   const r = p.result;
   const lines: string[] = [];
-  if (!confirmed) {
+  if (p.phase === 'tiro') {
     lines.push(`**${c.name}** tira una Prova **${r.input.approach}** contro Difficoltà ${r.input.difficulty}.`);
     if (r.input.turn === 3 && r.ones > 0) lines.push("-# Let's Jam!: ogni 1 vale 2 shock.");
     if (r.autoShock > 0) lines.push(`-# Ogni Prova produce almeno ${r.input.minShock} shock: ${r.autoShock} automatico.`);
@@ -91,11 +116,14 @@ function intro(p: PendingProva, c: Character, confirmed: boolean): string {
       const n = r.input.cartridges;
       lines.push(`-# Farsi coinvolgere: ${n === 1 ? '1 Cartuccia segnata' : `${n} Cartucce segnate`}.`);
     }
+    if (p.tags.includes('INSEGUIMENTO') && r.pushed) lines.push('-# Inseguimento: spinto al limite in automatico.');
   } else {
-    const succ = r.successes === 1 ? '1 successo' : `${r.successes} successi`;
-    const shock = r.shocksLeft === 1 ? '1 shock' : `${r.shocksLeft} shock`;
-    lines.push(`**${c.name}** ha ${succ} da spendere, il Big Shot ha ${shock}.`);
-    lines.push('-# Spendeteli insieme: segnare un orologio oppure ±1 alla Difficoltà (`/cowbot partita difficolta`).');
+    const s = p.spend;
+    const bs = game.bigShotId ? `<@${game.bigShotId}>` : 'il Big Shot';
+    lines.push(
+      `**${c.name}** spende ${s.successes === 1 ? '1 successo' : `${s.successes} successi`}, ${bs} ${s.shocks === 1 ? '1 shock' : `${s.shocks} shock`}. Difficoltà attuale: **${game.difficulty}**.`,
+    );
+    lines.push('-# Successi: segnare un orologio o −1 Difficoltà. Shock: segnare un orologio, +1 Difficoltà o diventare Rischio.');
   }
   if (c.cartridges >= MAX_CARTRIDGES) {
     lines.push(`**Ultima Cartuccia segnata:** la svolta termina in negativo e il passato di ${c.name} bussa alla porta.`);
@@ -103,63 +131,118 @@ function intro(p: PendingProva, c: Character, confirmed: boolean): string {
   return lines.join('\n');
 }
 
-function buttons(p: PendingProva, c: Character): ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] {
+const cid = (p: PendingProva, action: string) => `${PROVA_PREFIX}:${p.id}:${action}`;
+
+function rollRows(p: PendingProva, c: Character): Row[] {
   const r = p.result;
-  const id = (action: string) => `${PROVA_PREFIX}:${p.id}:${action}`;
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(cid(p, 'push')).setLabel('Spingersi al limite').setStyle(ButtonStyle.Primary).setDisabled(!canPush(r)),
     new ButtonBuilder()
-      .setCustomId(id('push'))
-      .setLabel('Spingersi al limite')
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(!canPush(r)),
-    new ButtonBuilder()
-      .setCustomId(id('wound'))
+      .setCustomId(cid(p, 'wound'))
       .setLabel('Assorbi: ferisci un tratto')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!canAbsorb(r, 'ferita')),
     new ButtonBuilder()
-      .setCustomId(id('cart'))
+      .setCustomId(cid(p, 'cart'))
       .setLabel(`Assorbi: Cartuccia (${c.cartridges}/${MAX_CARTRIDGES})`)
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!canAbsorb(r, 'cartuccia') || c.cartridges >= MAX_CARTRIDGES),
-    new ButtonBuilder().setCustomId(id('done')).setLabel('Conferma').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(cid(p, 'done')).setLabel('Conferma e spendi').setStyle(ButtonStyle.Success),
   );
-  const rows: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [row];
+  const rows: Row[] = [row];
   if (p.choosingWound) {
     const menu = new StringSelectMenuBuilder()
-      .setCustomId(id('woundsel'))
+      .setCustomId(cid(p, 'woundsel'))
       .setPlaceholder('Quale tratto viene ferito?')
       .addOptions(
-        r.input.traits.map((t) => {
-          const trait = findTrait(c, t);
-          return {
-            label: t,
-            value: t,
-            description: trait?.slot === 'MONO' ? 'Tratto del MONO: ferita grave' : 'Ferita, recuperabile',
-          };
-        }),
+        r.input.traits.map((t) => ({
+          label: t,
+          value: t,
+          description: findTrait(c, t)?.slot === 'MONO' ? 'Tratto del MONO: ferita grave' : 'Ferita, recuperabile',
+        })),
       );
     rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu));
   }
   return rows;
 }
 
-async function provaMessage(p: PendingProva, c: Character, confirmed: boolean) {
+function clockMenu(p: PendingProva, action: string, placeholder: string, clocks: Clock[], disabled: boolean): Row {
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(cid(p, action))
+    .setPlaceholder(placeholder)
+    .setDisabled(disabled)
+    .addOptions(
+      clocks.slice(0, 25).map((k) => ({
+        label: `${k.name} (${k.marks}/${k.size})`.slice(0, 100),
+        value: String(k.id),
+        description: `${k.kind} · ${k.approach}`,
+      })),
+    );
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu);
+}
+
+function spendRows(p: PendingProva, game: Game, clocks: Clock[]): Row[] {
+  const s = p.spend;
+  const rows: Row[] = [];
+  if (clocks.length) rows.push(clockMenu(p, 'sclock', `Successo (${s.successes}): segna un orologio`, clocks, s.successes === 0));
+  rows.push(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(cid(p, 'sdiff'))
+        .setLabel(game.difficultyLocked ? 'Difficoltà bloccata' : 'Successo: −1 Difficoltà')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(s.successes === 0 || game.difficultyLocked || game.difficulty === 0),
+      new ButtonBuilder().setCustomId(cid(p, 'end')).setLabel('Fine spesa').setStyle(ButtonStyle.Success),
+    ),
+  );
+  if (clocks.length) rows.push(clockMenu(p, 'kclock', `Shock (${s.shocks}): segna un orologio`, clocks, s.shocks === 0));
+  const turn = p.result.input.turn;
+  rows.push(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(cid(p, 'kdiff')).setLabel('Shock: +1 Difficoltà').setStyle(ButtonStyle.Danger).setDisabled(s.shocks === 0),
+      new ButtonBuilder()
+        .setCustomId(cid(p, 'krisk'))
+        .setLabel('Shock → Rischio')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(s.shocks === 0 || s.noConvert),
+      new ButtonBuilder()
+        .setCustomId(cid(p, 'r1'))
+        .setLabel(`Rischio: +1 shock (${game.rischio})`)
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(game.rischio < 1),
+      ...(turn >= 2
+        ? [
+            new ButtonBuilder()
+              .setCustomId(cid(p, 'r2'))
+              .setLabel('Rischio: +2 shock')
+              .setStyle(ButtonStyle.Secondary)
+              .setDisabled(game.rischio < 1 || s.converted > 0),
+          ]
+        : []),
+    ),
+  );
+  return rows;
+}
+
+async function provaMessage(ctx: Context, p: PendingProva, c: Character, extra: AttachmentBuilder | null, done = false) {
+  const game = ctx.games.get(p.channelId);
   const png = await renderProvaCard({
     result: p.result,
     characterName: c.name,
     cartridges: c.cartridges,
-    confirmed,
+    confirmed: p.phase === 'spesa',
+    tags: p.tags,
+    spend: p.phase === 'spesa' ? { ...p.spend, done } : null,
   });
-  const file = new AttachmentBuilder(png, {
-    name: 'prova.png',
-    description: altText(p.result, c.name),
-  });
+  const file = new AttachmentBuilder(png, { name: 'prova.png', description: altText(p.result, c.name) });
+  const clocks = ctx.clocks.list(p.channelId, false);
+  let components: Row[] = [];
+  if (!done) components = p.phase === 'tiro' ? rollRows(p, c) : spendRows(p, game, clocks);
   return {
-    content: intro(p, c, confirmed),
-    files: [file],
+    content: intro(p, c, game),
+    files: extra ? [file, extra] : [file],
     attachments: [],
-    components: confirmed ? [] : buttons(p, c),
+    components,
   } satisfies InteractionUpdateOptions;
 }
 
@@ -169,18 +252,31 @@ function altText(r: ProvaResult, name: string): string {
   return `Prova ${r.input.approach} di ${name}, svolta ${TURNS[r.input.turn].name}: dadi ${kept}, somma ${r.sum} contro ${r.input.difficulty}. ${r.successes} successi, ${r.shocksLeft} shock.`;
 }
 
-export async function handleProvaComponent(
-  i: ButtonInteraction | StringSelectMenuInteraction,
-  ctx: Context,
-): Promise<void> {
-  const [, id, action] = i.customId.split(':');
+// --- Pulsanti ---
+
+/** Azioni del giocatore che ha tirato e azioni del Big Shot. */
+const PLAYER_ACTIONS = new Set(['push', 'wound', 'woundsel', 'cart', 'done', 'sclock', 'sdiff']);
+const BIG_SHOT_ACTIONS = new Set(['kclock', 'kdiff', 'krisk', 'r1', 'r2']);
+
+export async function handleProvaComponent(i: ButtonInteraction | StringSelectMenuInteraction, ctx: Context): Promise<void> {
+  const [, id, action = ''] = i.customId.split(':');
   const p = id ? ctx.pending.get(id) : undefined;
   if (!p) {
-    await i.reply({ content: 'Questa Prova è scaduta: i pulsanti valgono per un\'ora.', flags: MessageFlags.Ephemeral });
+    await i.reply({ content: 'Questa Prova è scaduta: i pulsanti valgono per tre ore.', flags: MessageFlags.Ephemeral });
     return;
   }
-  if (i.user.id !== p.userId) {
-    await i.reply({ content: 'Solo chi ha tirato può decidere come usare questa Prova.', flags: MessageFlags.Ephemeral });
+  const game = ctx.games.get(p.channelId);
+  const isBigShot = !game.bigShotId || game.bigShotId === i.user.id;
+  if (PLAYER_ACTIONS.has(action) && i.user.id !== p.userId) {
+    await i.reply({ content: 'Solo chi ha tirato decide come usare i suoi successi.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+  if (BIG_SHOT_ACTIONS.has(action) && !isBigShot) {
+    await i.reply({ content: 'Gli shock e il Rischio li spende il Big Shot.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+  if (action === 'end' && i.user.id !== p.userId && !isBigShot) {
+    await i.reply({ content: 'Può chiudere la spesa chi ha tirato o il Big Shot.', flags: MessageFlags.Ephemeral });
     return;
   }
   let c = ctx.characters.byId(p.characterId);
@@ -190,38 +286,111 @@ export async function handleProvaComponent(
     return;
   }
 
-  let confirmed = false;
-  switch (action) {
-    case 'push':
-      if (canPush(p.result)) p.result = push(p.result);
-      break;
-    case 'wound': {
-      const usable = p.result.input.traits;
-      if (usable.length === 1) {
-        c = applyWound(ctx, p, c, usable[0]!);
-      } else {
-        p.choosingWound = true;
+  try {
+    let extra: AttachmentBuilder | null = null;
+    let done = false;
+    const s = p.spend;
+    switch (action) {
+      // Fase del tiro
+      case 'push':
+        if (canPush(p.result)) p.result = push(p.result);
+        break;
+      case 'wound': {
+        const usable = p.result.input.traits;
+        if (usable.length === 1) c = applyWound(ctx, p, c, usable[0]!);
+        else p.choosingWound = true;
+        break;
       }
-      break;
-    }
-    case 'woundsel':
-      if (i.isStringSelectMenu() && i.values[0]) c = applyWound(ctx, p, c, i.values[0]);
-      break;
-    case 'cart':
-      if (canAbsorb(p.result, 'cartuccia') && c.cartridges < MAX_CARTRIDGES) {
-        p.result = absorb(p.result, { kind: 'cartuccia' });
-        c = ctx.characters.save(setCartridges(c, c.cartridges + 1));
-      }
-      break;
-    case 'done':
-      confirmed = true;
-      ctx.pending.delete(p.id);
-      break;
-    default:
-      return;
-  }
+      case 'woundsel':
+        if (i.isStringSelectMenu() && i.values[0]) c = applyWound(ctx, p, c, i.values[0]);
+        break;
+      case 'cart':
+        if (canAbsorb(p.result, 'cartuccia') && c.cartridges < MAX_CARTRIDGES) {
+          p.result = absorb(p.result, { kind: 'cartuccia' });
+          c = ctx.characters.save(setCartridges(c, c.cartridges + 1));
+        }
+        break;
+      case 'done':
+        p.phase = 'spesa';
+        p.choosingWound = false;
+        s.successes = p.result.successes;
+        s.shocks = p.result.shocksLeft;
+        break;
 
-  await i.update(await provaMessage(p, c, confirmed));
+      // Fase di spesa (p. 20)
+      case 'sclock':
+      case 'kclock': {
+        const bySuccess = action === 'sclock';
+        if ((bySuccess ? s.successes : s.shocks) < 1 || !i.isStringSelectMenu()) break;
+        const clock = ctx.clocks.byId(Number(i.values[0]));
+        if (!clock || clock.channelId !== p.channelId) throw new SheetError('Orologio non trovato.');
+        const res = markClock(
+          ctx,
+          p.channelId,
+          clock,
+          bySuccess ? { by: 'successo', approach: p.result.input.approach } : { by: 'shock' },
+        );
+        if (bySuccess) s.successes--;
+        else s.shocks--;
+        s.log.push(`${bySuccess ? 'Successo' : 'Shock'} su «${clock.name}»: ${res.clock.marks}/${res.clock.size}${res.closed ? ', chiuso' : ''}.`);
+        if (res.lines.length) await followUp(i, res.lines.join('\n'));
+        extra = await clocksAttachment(ctx, p.channelId, clock.id, res.note);
+        break;
+      }
+      case 'sdiff': {
+        if (s.successes < 1 || game.difficultyLocked) break;
+        const g = ctx.games.save({ ...game, difficulty: Math.max(0, game.difficulty - 1) });
+        s.successes--;
+        s.log.push(`Successo: la Difficoltà scende a ${g.difficulty}.`);
+        break;
+      }
+      case 'kdiff': {
+        if (s.shocks < 1) break;
+        const g = ctx.games.save({ ...game, difficulty: game.difficulty + 1 });
+        s.shocks--;
+        s.log.push(`Shock: la Difficoltà sale a ${g.difficulty}.`);
+        break;
+      }
+      case 'krisk': {
+        if (s.shocks < 1 || s.noConvert) break;
+        const g = ctx.games.save({ ...game, rischio: game.rischio + 1 });
+        s.shocks--;
+        s.converted++;
+        s.log.push(`Shock messo da parte come Rischio: il Big Shot ne ha ${g.rischio}.`);
+        break;
+      }
+      case 'r1':
+      case 'r2': {
+        if (game.rischio < 1) break;
+        const two = action === 'r2';
+        if (two && (p.result.input.turn < 2 || s.converted > 0)) break;
+        const g = ctx.games.save({ ...game, rischio: game.rischio - 1 });
+        s.shocks += two ? 2 : 1;
+        if (two) s.noConvert = true;
+        s.log.push(`Il Big Shot spende 1 Rischio: +${two ? 2 : 1} shock da spendere subito (Rischio rimasto ${g.rischio}).`);
+        break;
+      }
+      case 'end':
+        done = true;
+        ctx.pending.delete(p.id);
+        break;
+      default:
+        return;
+    }
+    await i.update(await provaMessage(ctx, p, c, extra, done));
+  } catch (err) {
+    if (err instanceof SheetError) {
+      await i.reply({ content: err.message, flags: MessageFlags.Ephemeral });
+      return;
+    }
+    throw err;
+  }
+}
+
+/** Gli eventi importanti (fine svolta) vanno in un messaggio a parte, visibile a tutti. */
+async function followUp(i: ButtonInteraction | StringSelectMenuInteraction, text: string): Promise<void> {
+  const channel = i.channel;
+  if (channel && 'send' in channel) await channel.send(text).catch(() => {});
 }
 
 function applyWound(ctx: Context, p: PendingProva, c: Character, traitName: string): Character {

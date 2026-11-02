@@ -4,6 +4,7 @@ import {
   type SlashCommandSubcommandGroupBuilder,
 } from 'discord.js';
 import { APPROACHES, GROOVES, GROOVE_IDS, MAX_CARTRIDGES, MAX_RITMO } from '../engine/rules.js';
+import { CLOCK_KINDS, CLOCK_SIZES, SESSION_LABELS, SESSION_TYPES } from '../engine/session.js';
 
 const approachChoices = APPROACHES.map((a) => ({ name: a, value: a }));
 const grooveChoices = GROOVE_IDS.map((id) => ({ name: GROOVES[id].name, value: id }));
@@ -127,6 +128,19 @@ const partitaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
   g
   .setName('partita')
   .setDescription('Stato della partita in questo canale')
+  .addSubcommand((s) =>
+    s
+      .setName('sessione')
+      .setDescription('Inizia una Session: chi la lancia fa da Big Shot')
+      .addStringOption((o) =>
+        o
+          .setName('tipo')
+          .setDescription('Tipo di Session')
+          .setRequired(true)
+          .addChoices(...SESSION_TYPES.map((t) => ({ name: SESSION_LABELS[t], value: t }))),
+      )
+      .addStringOption((o) => o.setName('titolo').setDescription('Titolo della Session').setMaxLength(100)),
+  )
   .addSubcommand((s) => s.setName('stato').setDescription('Mostra svolta, Difficoltà e Genere'))
   .addSubcommand((s) =>
     s
@@ -162,6 +176,72 @@ const partitaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
       .addIntegerOption((o) => o.setName('valore').setDescription('1 o 2').setRequired(true).setMinValue(1).setMaxValue(2)),
   );
 
+const orologioGroup = (g: SlashCommandSubcommandGroupBuilder) =>
+  g
+  .setName('orologio')
+  .setDescription('Orologi della svolta: obiettivi, minacce, inseguimenti')
+  .addSubcommand((s) => s.setName('lista').setDescription('Mostra gli orologi aperti nel canale'))
+  .addSubcommand((s) =>
+    s
+      .setName('crea')
+      .setDescription('Apri un nuovo orologio (Big Shot)')
+      .addStringOption((o) => o.setName('nome').setDescription('Es. «Fuggire dal casinò»').setRequired(true).setMaxLength(60))
+      .addIntegerOption((o) =>
+        o
+          .setName('calibro')
+          .setDescription('Numero di sezioni')
+          .setRequired(true)
+          .addChoices(...CLOCK_SIZES.map((n) => ({ name: `${n} sezioni`, value: n }))),
+      )
+      .addStringOption((o) =>
+        o.setName('approccio').setDescription("Approccio che chiude l'orologio").setRequired(true).addChoices(...approachChoices),
+      )
+      .addStringOption((o) =>
+        o
+          .setName('tipo')
+          .setDescription('Obiettivo, minaccia, inseguimento o altro')
+          .setRequired(true)
+          .addChoices(...CLOCK_KINDS.map((k) => ({ name: k, value: k }))),
+      ),
+  )
+  .addSubcommand((s) =>
+    s
+      .setName('segna')
+      .setDescription('Segna sezioni a mano, fuori da una Prova (Big Shot)')
+      .addStringOption((o) => o.setName('nome').setDescription('Orologio').setRequired(true).setAutocomplete(true))
+      .addIntegerOption((o) => o.setName('sezioni').setDescription('Quante sezioni (di default 1)').setMinValue(1).setMaxValue(8)),
+  )
+  .addSubcommand((s) =>
+    s
+      .setName('elimina')
+      .setDescription('Elimina un orologio (Big Shot)')
+      .addStringOption((o) => o.setName('nome').setDescription('Orologio').setRequired(true).setAutocomplete(true)),
+  );
+
+const rischioGroup = (g: SlashCommandSubcommandGroupBuilder) =>
+  g
+  .setName('rischio')
+  .setDescription('Il Rischio del Big Shot')
+  .addSubcommand((s) =>
+    s
+      .setName('difficolta')
+      .setDescription('Inizio svolta: +1 Difficoltà per ogni Rischio speso')
+      .addIntegerOption((o) => o.setName('quantita').setDescription('Rischio da spendere').setRequired(true).setMinValue(1).setMaxValue(10)),
+  )
+  .addSubcommand((s) => s.setName('inseguimento').setDescription('Inizio svolta: 1 Rischio per trasformarla in un inseguimento'))
+  .addSubcommand((s) =>
+    s
+      .setName('svantaggio')
+      .setDescription('1 Rischio: la prossima Prova si tira con Svantaggio')
+      .addUserOption((o) => o.setName('giocatore').setDescription('Solo per la prossima Prova di questo giocatore')),
+  )
+  .addSubcommand((s) =>
+    s
+      .setName('imposta')
+      .setDescription('Corregge a mano il Rischio del Big Shot')
+      .addIntegerOption((o) => o.setName('valore').setDescription('Nuovo valore').setRequired(true).setMinValue(0).setMaxValue(99)),
+  );
+
 /** Nome dell'unico slash command del bot: tutto il resto sono sottocomandi. */
 export const ROOT_COMMAND = 'cowbot';
 
@@ -170,12 +250,16 @@ export const ROOT_COMMAND = 'cowbot';
  * - /cowbot prova
  * - /cowbot scheda <azione>
  * - /cowbot partita <azione>
+ * - /cowbot orologio <azione>
+ * - /cowbot rischio <azione>
  */
 export const cowbotCommand = new SlashCommandBuilder()
   .setName(ROOT_COMMAND)
-  .setDescription('Cowboy Bebop - Il Gioco di Ruolo: Prove, schede e partita')
+  .setDescription('Cowboy Bebop - Il Gioco di Ruolo: Prove, schede, orologi e Rischio')
   .addSubcommand(provaSubcommand)
   .addSubcommandGroup(schedaGroup)
-  .addSubcommandGroup(partitaGroup);
+  .addSubcommandGroup(partitaGroup)
+  .addSubcommandGroup(orologioGroup)
+  .addSubcommandGroup(rischioGroup);
 
 export const allCommands = [cowbotCommand];
