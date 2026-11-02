@@ -23,7 +23,7 @@ npm run dev
 
 Per creare il bot: Discord Developer Portal → New Application → Bot → copia il token. Per invitarlo: OAuth2 → URL Generator, scope `bot` e `applications.commands`, permessi *Send Messages* e *Attach Files*.
 
-In produzione: `npm run build` e poi `npm start`. I dati stanno in un file SQLite (`DATABASE_PATH`, di default `data/cowboy-bebot.sqlite`).
+In produzione si usa Docker: la guida passo passo per il VPS è in [docs/deploy-vps.md](docs/deploy-vps.md). Senza Docker: `npm run build` e poi `npm start`. I dati stanno in un file SQLite (`DATABASE_PATH`, di default `data/cowboy-bebot.sqlite`).
 
 ## Sviluppo
 
