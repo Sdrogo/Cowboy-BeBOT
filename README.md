@@ -1,0 +1,45 @@
+# Cowboy BeBOT
+
+Bot Discord per giocare a **Cowboy Bebop – Il Gioco di Ruolo**. Tira le Prove con le regole del manuale e mostra il risultato come una card grafica, tiene le schede dei personaggi e lo stato della partita in ogni canale.
+
+## Cosa fa
+
+- **`/prova`** tira una Prova con il personaggio attivo. La riserva si calcola da sola: dadi della svolta, tratti scelti (con autocompletamento), Genere, Cartucce di *farsi coinvolgere*, Vantaggio e Svantaggio. Il risultato arriva come immagine, con i pulsanti per spingersi al limite e assorbire shock (ferendo un tratto o segnando una Cartuccia). Solo chi ha tirato può usarli.
+- **`/scheda`** gestisce i personaggi. Ogni utente Discord può averne più di uno e passare dall'uno all'altro con `/scheda usa`. Contiene Groove, concept, Ricordo, tratti per Approccio (3 esagoni ciascuno, più 3 per il MONO), ferite, Cartucce, Ritmo e Fardelli.
+- **`/partita`** tiene svolta, Difficoltà, Genere e shock minimo del canale.
+
+Le regole implementate e le scelte sui punti ambigui del manuale sono nella specifica condivisa nel progetto.
+
+## Avvio
+
+Serve Node.js 20 o superiore.
+
+```bash
+npm install
+cp .env.example .env   # inserisci token, application id e (per i test) l'id del server
+npm run deploy-commands
+npm run dev
+```
+
+Per creare il bot: Discord Developer Portal → New Application → Bot → copia il token. Per invitarlo: OAuth2 → URL Generator, scope `bot` e `applications.commands`, permessi *Send Messages* e *Attach Files*.
+
+In produzione: `npm run build` e poi `npm start`. I dati stanno in un file SQLite (`DATABASE_PATH`, di default `data/cowboy-bebot.sqlite`).
+
+## Sviluppo
+
+```bash
+npm test              # test del motore delle Prove e delle schede
+npm run typecheck
+npm run preview-card  # genera card di esempio in ./preview senza collegarsi a Discord
+```
+
+Struttura:
+
+- `src/engine` regole e motore delle Prove, funzioni pure e testate
+- `src/store` schede e partite su SQLite
+- `src/render` card generate con Satori (layout tipo flexbox) e convertite in PNG con resvg
+- `src/commands` slash command e pulsanti
+
+## Non ancora fatto
+
+Orologi, Ritmo e Rischio di inizio Session, Riff che spendono Ritmo (Assolo, Aiutare, Improvvisare, Jam), Scommettere, Groove con scelte dopo il tiro (Piani a Lungo Termine, Fuori dagli Schemi, Aggiustatutto), Tratti Session e scheda in versione grafica.
