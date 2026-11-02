@@ -43,3 +43,14 @@ Struttura:
 ## Non ancora fatto
 
 Orologi, Ritmo e Rischio di inizio Session, Riff che spendono Ritmo (Assolo, Aiutare, Improvvisare, Jam), Scommettere, Groove con scelte dopo il tiro (Piani a Lungo Termine, Fuori dagli Schemi, Aggiustatutto), Tratti Session e scheda in versione grafica.
+
+## Termini e privacy
+
+I Termini di Servizio e l'Informativa sulla privacy (in italiano e in inglese) sono in `docs/legal`. Con GitHub Pages attivo sulla cartella `/docs` del ramo di rilascio, sono pubblicati a questi indirizzi, da inserire nel Developer Portal (General Information → Terms of Service URL e Privacy Policy URL):
+
+- https://sdrogo.github.io/Cowboy-BeBOT/legal/termini-di-servizio.html
+- https://sdrogo.github.io/Cowboy-BeBOT/legal/privacy.html
+- https://sdrogo.github.io/Cowboy-BeBOT/legal/terms-of-service.html
+- https://sdrogo.github.io/Cowboy-BeBOT/legal/privacy-policy.html
+
+Se aggiungi dati salvati nel database, aggiorna anche l'informativa.
