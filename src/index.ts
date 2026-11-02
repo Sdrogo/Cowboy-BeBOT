@@ -12,7 +12,8 @@ if (!token) {
   process.exit(1);
 }
 
-const ctx = createContext(openDatabase(process.env.DATABASE_PATH ?? 'data/cowboy-bebot.sqlite'));
+const db = openDatabase(process.env.DATABASE_PATH ?? 'data/cowboy-bebot.sqlite');
+const ctx = createContext(db);
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.once(Events.ClientReady, (c) => console.log(`Cowboy BeBOT in linea come ${c.user.tag}`));
@@ -41,5 +42,15 @@ async function route(i: Interaction, ctx: Context): Promise<void> {
     return handleProvaComponent(i, ctx);
   }
 }
+
+// `docker stop` manda SIGTERM: chiudiamo Discord e il database prima di uscire.
+async function shutdown(signal: string): Promise<void> {
+  console.log(`Ricevuto ${signal}, chiusura in corso.`);
+  await client.destroy().catch(() => {});
+  db.close();
+  process.exit(0);
+}
+process.once('SIGTERM', () => void shutdown('SIGTERM'));
+process.once('SIGINT', () => void shutdown('SIGINT'));
 
 await client.login(token);

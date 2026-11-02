@@ -1,0 +1,22 @@
+services:
+  bot:
+    build: .
+    image: cowboy-bebot:latest
+    container_name: cowboy-bebot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Il database vive nel volume, qualunque cosa ci sia in .env.
+      DATABASE_PATH: /app/data/cowboy-bebot.sqlite
+    volumes:
+      - bot-data:/app/data
+    init: true
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  bot-data:
