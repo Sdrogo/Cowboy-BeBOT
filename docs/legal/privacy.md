@@ -10,7 +10,7 @@ Questa informativa spiega quali dati tratta **Cowboy BeBOT** (il "Bot"), perché
 
 ## 1. Titolare del trattamento
 
-Il titolare è **{{NOME_TITOLARE}}**, contattabile a **{{EMAIL_CONTATTO}}**.
+Il titolare è il team **Army of Me**, contattabile tramite il [canale Discord del team]({{LINK_DISCORD_TEAM}}).
 
 ## 2. Quali dati raccogliamo
 
@@ -39,7 +39,7 @@ I dati **non** vengono usati per pubblicità, profilazione o decisioni automatiz
 
 ## 4. Dove sono conservati e chi può accedervi
 
-I dati sono conservati in un database su un server privato gestito dal titolare, presso **{{FORNITORE_HOSTING}}** in **{{PAESE_SERVER}}**. Il fornitore agisce solo come infrastruttura. Solo il titolare ha accesso al database.
+I dati sono conservati in un database su un server privato gestito dal titolare, presso **OVHcloud** nel **Regno Unito (Londra)**. Il fornitore agisce solo come infrastruttura. Il Regno Unito è fuori dall'Unione europea ma la Commissione europea ne riconosce l'adeguatezza del livello di protezione dei dati (art. 45 GDPR), quindi il trasferimento è consentito senza ulteriori garanzie. Solo il titolare ha accesso al database.
 
 Le interazioni passano anche attraverso Discord, che le tratta secondo la propria [Informativa sulla privacy](https://discord.com/privacy). Discord Inc. ha sede negli Stati Uniti.
 
@@ -54,7 +54,7 @@ Se il Bot viene dismesso, il database viene cancellato.
 
 ## 6. I tuoi diritti
 
-Hai diritto di chiedere l'accesso ai tuoi dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e di opporti al trattamento basato sul legittimo interesse (artt. 15–22 GDPR). Molte di queste cose puoi farle da solo con `/scheda`. Per tutto il resto scrivi a **{{EMAIL_CONTATTO}}** indicando il tuo ID utente Discord: risponderemo entro un mese.
+Hai diritto di chiedere l'accesso ai tuoi dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e di opporti al trattamento basato sul legittimo interesse (artt. 15–22 GDPR). Molte di queste cose puoi farle da solo con `/scheda`. Per tutto il resto scrivi nel [canale Discord del team]({{LINK_DISCORD_TEAM}}) indicando il tuo ID utente Discord: risponderemo entro un mese.
 
 Se ritieni che il trattamento violi il GDPR, puoi proporre reclamo al [Garante per la protezione dei dati personali](https://www.garanteprivacy.it) o all'autorità del tuo Paese.
 

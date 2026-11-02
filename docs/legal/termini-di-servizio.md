@@ -6,7 +6,7 @@ title: Termini di Servizio – Cowboy BeBOT
 
 *In vigore dal 2 novembre 2026* · [English version](terms-of-service.html)
 
-Questi termini regolano l'uso di **Cowboy BeBOT** (il "Bot"), un bot Discord amatoriale che aiuta a giocare a *Cowboy Bebop – Il Gioco di Ruolo*: tira le Prove, conserva le schede dei personaggi e lo stato della partita nei canali. Il Bot è gestito da **{{NOME_TITOLARE}}** (il "Gestore"). Usando il Bot, o aggiungendolo a un server, accetti questi termini.
+Questi termini regolano l'uso di **Cowboy BeBOT** (il "Bot"), un bot Discord amatoriale che aiuta a giocare a *Cowboy Bebop – Il Gioco di Ruolo*: tira le Prove, conserva le schede dei personaggi e lo stato della partita nei canali. Il Bot è gestito dal team **Army of Me** (il "Gestore"). Usando il Bot, o aggiungendolo a un server, accetti questi termini.
 
 ## 1. Chi può usarlo
 
@@ -48,4 +48,4 @@ Questi termini sono regolati dalla legge italiana. Se usi il Bot come consumator
 
 ## 9. Contatti
 
-Per domande o segnalazioni: **{{EMAIL_CONTATTO}}**.
+Per domande o segnalazioni scrivi nel [canale Discord del team Army of Me]({{LINK_DISCORD_TEAM}}).

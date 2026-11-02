@@ -10,7 +10,7 @@ This policy explains what data **Cowboy BeBOT** (the "Bot") processes, why, and 
 
 ## 1. Data controller
 
-The controller is **{{NOME_TITOLARE}}**, reachable at **{{EMAIL_CONTATTO}}**.
+The controller is the **Army of Me** team, reachable through the [team's Discord channel]({{LINK_DISCORD_TEAM}}).
 
 ## 2. What we collect
 
@@ -39,7 +39,7 @@ The data is **not** used for advertising, profiling or automated decision-making
 
 ## 4. Where it is stored and who can access it
 
-The data is stored in a database on a private server run by the controller, hosted by **{{FORNITORE_HOSTING}}** in **{{PAESE_SERVER}}**. The provider acts only as infrastructure. Only the controller has access to the database.
+The data is stored in a database on a private server run by the controller, hosted by **OVHcloud** in **the United Kingdom (London)**. The provider acts only as infrastructure. The UK is outside the European Union, but the European Commission recognises it as providing an adequate level of data protection (Art. 45 GDPR), so the transfer needs no further safeguards. Only the controller has access to the database.
 
 Interactions also pass through Discord, which processes them under its own [Privacy Policy](https://discord.com/privacy). Discord Inc. is based in the United States.
 
@@ -54,7 +54,7 @@ If the Bot is shut down, the database is deleted.
 
 ## 6. Your rights
 
-You have the right to access, rectify and erase your data, to restrict processing, to data portability, and to object to processing based on legitimate interest (Arts. 15–22 GDPR). You can do much of this yourself with `/scheda`. For anything else, write to **{{EMAIL_CONTATTO}}** with your Discord user ID: we will reply within one month.
+You have the right to access, rectify and erase your data, to restrict processing, to data portability, and to object to processing based on legitimate interest (Arts. 15–22 GDPR). You can do much of this yourself with `/scheda`. For anything else, write in the [team's Discord channel]({{LINK_DISCORD_TEAM}}) with your Discord user ID: we will reply within one month.
 
 If you believe the processing breaches the GDPR, you can lodge a complaint with the Italian [Garante per la protezione dei dati personali](https://www.garanteprivacy.it) or with the authority in your country.
 

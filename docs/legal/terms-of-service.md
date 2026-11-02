@@ -6,7 +6,7 @@ title: Terms of Service – Cowboy BeBOT
 
 *Effective 2 November 2026* · [Versione italiana](termini-di-servizio.html)
 
-These terms govern your use of **Cowboy BeBOT** (the "Bot"), a hobby Discord bot for playing the *Cowboy Bebop Roleplaying Game*: it rolls checks, stores character sheets and keeps per-channel game state. The Bot is run by **{{NOME_TITOLARE}}** (the "Operator"). By using the Bot or adding it to a server, you agree to these terms. If the two language versions differ, the Italian one prevails.
+These terms govern your use of **Cowboy BeBOT** (the "Bot"), a hobby Discord bot for playing the *Cowboy Bebop Roleplaying Game*: it rolls checks, stores character sheets and keeps per-channel game state. The Bot is run by the **Army of Me** team (the "Operator"). By using the Bot or adding it to a server, you agree to these terms. If the two language versions differ, the Italian one prevails.
 
 ## 1. Who can use it
 
@@ -48,4 +48,4 @@ These terms are governed by Italian law. If you use the Bot as a consumer, you k
 
 ## 9. Contact
 
-Questions or reports: **{{EMAIL_CONTATTO}}**.
+For questions or reports, write in the [Army of Me team's Discord channel]({{LINK_DISCORD_TEAM}}).
