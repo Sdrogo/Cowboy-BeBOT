@@ -23,6 +23,7 @@ import { enterTurn, newGame, type Game } from '../store/games.js';
 import { renderSessionCard } from '../render/sessionCard.js';
 import { approachColorInt } from '../render/theme.js';
 import { setRitmo } from '../store/characters.js';
+import { askEndSession, replyTheEnd } from './fine.js';
 
 export const SESSION_PREFIX = 'sessione';
 
@@ -167,6 +168,12 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       });
       return;
     }
+    case 'fine':
+      await askEndSession(i, ctx);
+      return;
+    case 'the-end':
+      await replyTheEnd(i, ctx);
+      return;
     case 'stato':
       await i.reply({ embeds: [gameEmbed(g)] });
       return;

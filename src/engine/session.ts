@@ -147,3 +147,71 @@ export function threatOutcome(approach: Approach): ThreatOutcome {
       };
   }
 }
+
+// --- Fine Session ---
+
+export type SessionOutcome = 'positiva' | 'negativa';
+
+/** Personale e seconda Session del Climax cancellano i segni sulle Cartucce (p. 42, p. 52). */
+export const clearsCartridges = (type: SessionType) => type === 'personale' || type === 'climax-2';
+
+/**
+ * Cosa possono fare i CT in chiusura, per tipo di Session:
+ * See You Space Cowboy… (p. 38) o la Chiusura del tipo speciale (pp. 44, 49, 51, 53).
+ */
+export function closingNotes(type: SessionType, outcome: SessionOutcome, lastCartridge: boolean): string[] {
+  switch (type) {
+    case 'classica': {
+      const out: string[] = [];
+      if (outcome === 'positiva') out.push("Chi ha contribuito al successo può prendere un nuovo tratto o cambiare l'Approccio di uno esistente.");
+      if (outcome === 'negativa' || lastCartridge) out.push('Almeno un CT scrive il titolo della Session come Fardello sotto il Ricordo.');
+      if (lastCartridge) out.push("Di solito il Fardello lo prende chi ha segnato l'ultima Cartuccia. La prossima è una Session Personale.");
+      return out;
+    }
+    case 'personale':
+      return outcome === 'positiva'
+        ? ['Il CT sotto i riflettori può segnare una X vicino al Fardello usato nella Session.', 'Le Cartucce di tutti tornano libere.']
+        : ['Nessuna X sui Fardelli questa volta.', 'Le Cartucce di tutti tornano libere.'];
+    case 'filler':
+      return [
+        'Ogni CT può spostare un tratto in un altro Approccio, rinominare un Fardello o cambiare un tratto.',
+        'Ogni svolta negativa o attività fallita cancella una di queste azioni per tutti.',
+      ];
+    case 'climax-1':
+      return ['Cliffhanger: il cattivo rivela il secondo Segreto. Niente Chiusura, il seguito è nella prossima Session.'];
+    case 'climax-2': {
+      const out = ['Ogni CT può cambiare il Groove del suo personaggio.', 'Le Cartucce di tutti tornano libere.'];
+      if (outcome === 'positiva') out.unshift('Ogni CT può segnare una X vicino a un Fardello appropriato.');
+      out.push('Se era il finale di stagione, è il momento di The End.');
+      return out;
+    }
+  }
+}
+
+export interface TheEndResult {
+  dice: number[];
+  sum: number;
+  sixes: number;
+  successes: number;
+  title: string;
+  text: string;
+}
+
+export const THE_END_DIFFICULTY = 10;
+
+/** The End: 1D6 più 1D6 per Fardello con la X, contro Difficoltà 10 (p. 54). */
+export function theEnd(dice: number[]): TheEndResult {
+  const sum = dice.reduce((a, b) => a + b, 0);
+  const sixes = dice.filter((d) => d === 6).length;
+  const successes = (sum >= THE_END_DIFFICULTY ? 1 : 0) + (sixes >= 2 ? 1 : 0);
+  const verdicts = [
+    { title: 'Schiacciato dal passato', text: 'Il personaggio muore o ricade nelle vecchie abitudini.' },
+    { title: 'Venuto a patti', text: 'Non sarà mai davvero libero, ma la situazione sembra migliorare.' },
+    { title: 'Finalmente libero', text: 'Il suo sentiero è tracciato e lo porterà lontano, nel bene e nel male.' },
+  ];
+  return { dice, sum, sixes, successes, ...verdicts[successes]! };
+}
+
+export function rollTheEnd(resolvedBurdens: number, rng: () => number = Math.random): TheEndResult {
+  return theEnd(Array.from({ length: 1 + resolvedBurdens }, () => 1 + Math.floor(rng() * 6)));
+}

@@ -7,7 +7,8 @@ import { absorb, evaluate, markKept, push, type ProvaInput } from '../src/engine
 import { renderProvaCard } from '../src/render/provaCard.js';
 import { renderClocksCard } from '../src/render/clocksCard.js';
 import { renderSessionCard } from '../src/render/sessionCard.js';
-import type { Clock } from '../src/engine/session.js';
+import { closingNotes, theEnd, type Clock } from '../src/engine/session.js';
+import { renderEndCard, renderTheEndCard } from '../src/render/endCard.js';
 
 const base: ProvaInput = {
   turn: 2,
@@ -98,3 +99,21 @@ writeFileSync(
   }),
 );
 console.log('preview/sessione.png');
+
+writeFileSync(
+  'preview/fine-session.png',
+  await renderEndCard({
+    type: 'classica',
+    title: 'Asteroid Blues',
+    outcome: 'negativa',
+    players: [
+      { name: 'Spike Spiegel', cartridges: 6, burdens: 1, resolvedBurdens: 0 },
+      { name: 'Faye Valentine', cartridges: 2, burdens: 0, resolvedBurdens: 0 },
+    ],
+    rischioLost: 3,
+    cartridgesCleared: false,
+    notes: closingNotes('classica', 'negativa', true),
+  }),
+);
+writeFileSync('preview/the-end.png', await renderTheEndCard('Spike Spiegel', theEnd([3, 6, 6])));
+console.log('preview/fine-session.png\npreview/the-end.png');

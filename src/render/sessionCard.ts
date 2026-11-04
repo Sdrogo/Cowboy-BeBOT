@@ -32,7 +32,7 @@ const PIPS: Record<number, number[]> = {
 
 const mono = (size: number, color: string) => ({ fontFamily: 'Plex Mono', fontSize: size, fontWeight: 600, letterSpacing: 1.5, color });
 
-function smallDie(value: number): Node {
+export function smallDie(value: number): Node {
   const on = PIPS[value] ?? [];
   return div(
     { width: 44, height: 44, borderRadius: 9, backgroundColor: PAPER, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 2 },
