@@ -47,7 +47,7 @@ Le interazioni passano anche attraverso Discord, che le tratta secondo la propri
 
 ## 5. Per quanto tempo
 
-- Le schede restano finché non le cancelli con `/cowbot-scheda elimina` o non chiedi al titolare di cancellarle.
+- Le schede restano finché non le cancelli con `/cowbot-scheda azione:elimina` o non chiedi al titolare di cancellarle.
 - Lo stato della partita di un canale resta finché il Bot è in uso nel server. Puoi chiederne la cancellazione al titolare.
 - I partecipanti e gli orologi di un canale vengono cancellati quando nello stesso canale inizia una nuova Session.
 - I dati temporanei dei tiri durano al massimo tre ore.

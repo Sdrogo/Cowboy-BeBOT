@@ -19,6 +19,7 @@ import {
   type PlayerSheet,
 } from '../engine/session.js';
 import type { Context } from '../context.js';
+import { actionOf } from './actions.js';
 import { enterTurn, newGame, type Game } from '../store/games.js';
 import { renderSessionCard } from '../render/sessionCard.js';
 import { approachColorInt } from '../render/theme.js';
@@ -109,14 +110,14 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
   const channelId = i.channelId;
   const g = ctx.games.get(channelId);
   const ephemeral = (content: string) => i.reply({ content, flags: MessageFlags.Ephemeral });
-  if (!g.sessionType) return void (await ephemeral('Nessuna Session in corso: avviala con /cowbot-partita sessione.'));
+  if (!g.sessionType) return void (await ephemeral('Nessuna Session in corso: avviala con /cowbot-partita azione:sessione.'));
   const isBigShot = !g.bigShotId || g.bigShotId === i.user.id;
 
   switch (action) {
     case 'join': {
       if (g.bigShotId === i.user.id) return void (await ephemeral('Sei il Big Shot: i CT sono gli altri giocatori.'));
       const c = ctx.characters.active(i.user.id);
-      if (!c) return void (await ephemeral('Ti serve un personaggio attivo: creane uno con /cowbot-scheda crea.'));
+      if (!c) return void (await ephemeral('Ti serve un personaggio attivo: creane uno con /cowbot-scheda azione:crea.'));
       const prev = ctx.games.players(channelId).find((p) => p.userId === i.user.id);
       // Nella Classica il Ritmo si tira una volta sola: chi si riunisce tiene il suo tiro.
       const roll = g.sessionType === 'classica' ? (prev?.roll ?? 1 + Math.floor(Math.random() * 6)) : null;
@@ -150,7 +151,7 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
 }
 
 export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
-  const sub = i.options.getSubcommand();
+  const sub = actionOf(i);
   const g = ctx.games.get(i.channelId);
   switch (sub) {
     case 'sessione': {
@@ -159,7 +160,7 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       ctx.games.clearPlayers(i.channelId);
       ctx.clocks.clear(i.channelId);
       const fresh = newGame(i.channelId);
-      const genre = i.options.getString('genere');
+      const genre = i.options.getString('approccio');
       ctx.games.save({
         ...fresh,
         sessionType: type,

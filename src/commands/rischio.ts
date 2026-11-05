@@ -1,5 +1,6 @@
 import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 import type { Context } from '../context.js';
+import { actionOf } from './actions.js';
 import { SheetError } from '../store/characters.js';
 import type { Game } from '../store/games.js';
 import { gameEmbed } from './partita.js';
@@ -13,12 +14,12 @@ function spend(g: Game, userId: string, amount: number): Game {
 
 function startOfTurn(g: Game, what: string): void {
   if (g.provasInTurn > 0) {
-    throw new SheetError(`${what} si fa solo a inizio svolta, prima della prima Prova (p. 35). Apri una nuova svolta con /cowbot-partita svolta.`);
+    throw new SheetError(`${what} si fa solo a inizio svolta, prima della prima Prova (p. 35). Apri una nuova svolta con /cowbot-partita azione:svolta.`);
   }
 }
 
 export async function handleRischio(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
-  const sub = i.options.getSubcommand();
+  const sub = actionOf(i);
   const g = ctx.games.get(i.channelId);
   try {
     switch (sub) {
@@ -39,7 +40,7 @@ export async function handleRischio(i: ChatInputCommandInteraction, ctx: Context
         await i.reply({
           content:
             '**Inseguimento!** Il Big Shot spende 1 Rischio. Finché la svolta dura, ogni Prova con 0 successi viene ' +
-            'Spinta da sola finché non ne ottiene almeno uno (p. 36). Aprite un orologio inseguimento con /cowbot-orologio crea.',
+            'Spinta da sola finché non ne ottiene almeno uno (p. 36). Aprite un orologio inseguimento con /cowbot-orologio azione:crea.',
           embeds: [gameEmbed(next)],
         });
         return;

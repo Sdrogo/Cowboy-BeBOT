@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { Client, Events, GatewayIntentBits, MessageFlags, type Interaction } from 'discord.js';
 import { createContext, type Context } from './context.js';
+import { checkAction } from './commands/actions.js';
 import { ROOT_COMMAND } from './commands/definitions.js';
 import { END_PREFIX, handleEndComponent } from './commands/fine.js';
 import { autocompleteOrologio, handleOrologio } from './commands/orologio.js';
@@ -32,7 +33,7 @@ client.on(Events.InteractionCreate, (i) => {
 
 async function route(i: Interaction, ctx: Context): Promise<void> {
   if (i.isAutocomplete() || i.isChatInputCommand()) {
-    // /cowbot-prova, oppure /cowbot-<area> <azione>.
+    // /cowbot-prova, oppure /cowbot-<area> azione:<azione>.
     if (!i.commandName.startsWith(`${ROOT_COMMAND}-`)) return;
     const area = i.commandName.slice(ROOT_COMMAND.length + 1);
     if (i.isAutocomplete()) {
@@ -42,6 +43,10 @@ async function route(i: Interaction, ctx: Context): Promise<void> {
       return;
     }
     if (area === 'prova') return handleProva(i, ctx);
+    if (area === 'scheda' || area === 'partita' || area === 'orologio' || area === 'rischio') {
+      const problem = checkAction(i, area);
+      if (problem) return void (await i.reply({ content: problem, flags: MessageFlags.Ephemeral }));
+    }
     if (area === 'scheda') return handleScheda(i, ctx);
     if (area === 'partita') return handlePartita(i, ctx);
     if (area === 'orologio') return handleOrologio(i, ctx);
