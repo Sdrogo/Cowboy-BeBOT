@@ -1,6 +1,7 @@
 import type { Die, ProvaResult } from '../engine/prova.js';
 import { MAX_CARTRIDGES, TURNS } from '../engine/rules.js';
 import { div, el, renderPng, svg, type Child, type Node } from './satori.js';
+import { clocksCardTree, type ClocksCardData } from './clocksCard.js';
 import { APPROACH_COLORS, INK, LINE, LINE_STRONG, MUTED, PAPER } from './theme.js';
 
 export const CARD_WIDTH = 640;
@@ -15,6 +16,8 @@ export interface ProvaCardData {
   spend?: SpendView | null;
   /** Etichette in alto (es. INSEGUIMENTO, SVANTAGGIO DAL RISCHIO). */
   tags?: string[];
+  /** Orologi appena segnati: si disegnano sotto la card, nella stessa immagine. */
+  clocks?: ClocksCardData | null;
 }
 
 export interface SpendView {
@@ -341,5 +344,9 @@ function spendPanel(s: SpendView, accent: string): Node {
 }
 
 export function renderProvaCard(data: ProvaCardData): Promise<Buffer> {
-  return renderPng(provaCardTree(data), CARD_WIDTH);
+  // Due immagini allegate Discord le affianca e le taglia: meglio una sola, con le card impilate.
+  const tree = data.clocks
+    ? div({ width: CARD_WIDTH, flexDirection: 'column', gap: 12 }, provaCardTree(data), clocksCardTree(data.clocks))
+    : provaCardTree(data);
+  return renderPng(tree, CARD_WIDTH);
 }

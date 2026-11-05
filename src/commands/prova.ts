@@ -18,7 +18,8 @@ import type { Context, PendingProva } from '../context.js';
 import { renderProvaCard } from '../render/provaCard.js';
 import { SheetError, checkTraitsForProva, findTrait, setCartridges, setWound, type Character } from '../store/characters.js';
 import type { Game } from '../store/games.js';
-import { clocksAttachment, markClock } from './orologio.js';
+import { clocksAlt, clocksCardData, markClock } from './orologio.js';
+import type { ClocksCardData } from '../render/clocksCard.js';
 
 export const PROVA_PREFIX = 'prova';
 
@@ -226,7 +227,7 @@ function spendRows(p: PendingProva, game: Game, clocks: Clock[]): Row[] {
   return rows;
 }
 
-async function provaMessage(ctx: Context, p: PendingProva, c: Character, extra: AttachmentBuilder | null, done = false) {
+async function provaMessage(ctx: Context, p: PendingProva, c: Character, extra: ClocksCardData | null, done = false) {
   const game = ctx.games.get(p.channelId);
   const png = await renderProvaCard({
     result: p.result,
@@ -235,14 +236,15 @@ async function provaMessage(ctx: Context, p: PendingProva, c: Character, extra: 
     confirmed: p.phase === 'spesa',
     tags: p.tags,
     spend: p.phase === 'spesa' ? { ...p.spend, done } : null,
+    clocks: extra,
   });
-  const file = new AttachmentBuilder(png, { name: 'prova.png', description: altText(p.result, c.name) });
+  const file = new AttachmentBuilder(png, { name: 'prova.png', description: altText(p.result, c.name) + (extra ? ` Orologi: ${clocksAlt(extra)}.` : '') });
   const clocks = ctx.clocks.list(p.channelId, false);
   let components: Row[] = [];
   if (!done) components = p.phase === 'tiro' ? rollRows(p, c) : spendRows(p, game, clocks);
   return {
     content: intro(p, c, game),
-    files: extra ? [file, extra] : [file],
+    files: [file],
     attachments: [],
     components,
   } satisfies InteractionUpdateOptions;
@@ -291,7 +293,7 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
   // Disegnare la card può richiedere tempo: si conferma subito il clic e si aggiorna il messaggio dopo.
   await i.deferUpdate();
   try {
-    let extra: AttachmentBuilder | null = null;
+    let extra: ClocksCardData | null = null;
     let done = false;
     const s = p.spend;
     switch (action) {
@@ -338,7 +340,7 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
         else s.shocks--;
         s.log.push(`${bySuccess ? 'Successo' : 'Shock'} su «${clock.name}»: ${res.clock.marks}/${res.clock.size}${res.closed ? ', chiuso' : ''}.`);
         if (res.lines.length) await followUp(i, res.lines.join('\n'));
-        extra = await clocksAttachment(ctx, p.channelId, clock.id, res.note);
+        extra = clocksCardData(ctx, p.channelId, clock.id, res.note);
         break;
       }
       case 'sdiff': {
