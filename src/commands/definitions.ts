@@ -167,6 +167,17 @@ const partitaCommand = (g: SlashCommandBuilder) =>
           .setDescription('Svolta')
           .setRequired(true)
           .addChoices({ name: '1 · G.E.S.T.', value: 1 }, { name: '2 · 3, 2, 1…', value: 2 }, { name: "3 · Let's Jam!", value: 3 }),
+      )
+      .addStringOption((o) => o.setName('obiettivo').setDescription('Crea un orologio obiettivo con questo nome (Big Shot)').setMaxLength(60))
+      .addStringOption((o) => o.setName('minaccia').setDescription('Crea un orologio minaccia con questo nome (Big Shot)').setMaxLength(60))
+      .addIntegerOption((o) =>
+        o
+          .setName('calibro')
+          .setDescription('Sezioni degli orologi creati (di default 4)')
+          .addChoices(...CLOCK_SIZES.map((n) => ({ name: `${n} sezioni`, value: n }))),
+      )
+      .addStringOption((o) =>
+        o.setName('approccio').setDescription('Approccio degli orologi creati (di default il Genere)').addChoices(...approachChoices),
       ),
   )
   .addSubcommand((s) =>

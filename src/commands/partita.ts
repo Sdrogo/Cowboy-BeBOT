@@ -8,7 +8,7 @@ import {
   type ButtonInteraction,
   type ChatInputCommandInteraction,
 } from 'discord.js';
-import { MAX_RITMO, TURNS, isApproach, type TurnNumber } from '../engine/rules.js';
+import { MAX_RITMO, TURNS, isApproach, type Approach, type TurnNumber } from '../engine/rules.js';
 import {
   SESSION_LABELS,
   clampRitmo,
@@ -24,6 +24,7 @@ import { renderSessionCard } from '../render/sessionCard.js';
 import { approachColorInt } from '../render/theme.js';
 import { setRitmo } from '../store/characters.js';
 import { askEndSession, replyTheEnd } from './fine.js';
+import { clocksAttachment } from './orologio.js';
 
 export const SESSION_PREFIX = 'sessione';
 
@@ -187,8 +188,39 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       return;
     case 'svolta': {
       const n = i.options.getInteger('numero', true) as TurnNumber;
+      // Orologi della nuova svolta (p. 23): un obiettivo e una minaccia, creati insieme alla svolta.
+      const wanted = [
+        { kind: 'obiettivo' as const, name: i.options.getString('obiettivo') },
+        { kind: 'minaccia' as const, name: i.options.getString('minaccia') },
+      ].filter((c): c is { kind: 'obiettivo' | 'minaccia'; name: string } => !!c.name?.trim());
+      const reply = (content: string) => i.reply({ content, flags: MessageFlags.Ephemeral });
+      let approach: string | null = null;
+      if (wanted.length) {
+        if (g.bigShotId && g.bigShotId !== i.user.id) return void (await reply('Gli orologi li crea il Big Shot (p. 23).'));
+        approach = i.options.getString('approccio') ?? g.genre;
+        if (!approach || !isApproach(approach)) {
+          return void (await reply('Per creare gli orologi serve un Approccio: indicalo, oppure imposta prima il Genere della Session.'));
+        }
+        if (wanted.length === 2 && wanted[0]!.name.trim().toLowerCase() === wanted[1]!.name.trim().toLowerCase()) {
+          return void (await reply('Obiettivo e minaccia devono avere nomi diversi.'));
+        }
+        const open = ctx.clocks.list(i.channelId, false);
+        const dup = wanted.find((c) => open.some((o) => o.name.toLowerCase() === c.name.trim().toLowerCase()));
+        if (dup) return void (await reply(`C'è già un orologio aperto chiamato «${dup.name.trim()}».`));
+      }
       const next = ctx.games.setTurn(i.channelId, n);
-      await i.reply({ embeds: [gameEmbed(next, `Si apre la svolta ${n}: ${TURNS[n].name}`)] });
+      const created = wanted.map((c) =>
+        ctx.clocks.create(i.channelId, {
+          name: c.name,
+          size: i.options.getInteger('calibro') ?? 4,
+          approach: approach as Approach,
+          kind: c.kind,
+        }),
+      );
+      await i.reply({
+        embeds: [gameEmbed(next, `Si apre la svolta ${n}: ${TURNS[n].name}`)],
+        ...(created.length ? { files: [await clocksAttachment(ctx, i.channelId, null, null)] } : {}),
+      });
       return;
     }
     case 'difficolta': {
