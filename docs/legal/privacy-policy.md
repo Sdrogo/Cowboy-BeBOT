@@ -14,7 +14,7 @@ The controller is the **Army of Me** team, reachable through the [team's Discord
 
 ## 2. What we collect
 
-The Bot only receives from Discord your interactions with its commands (`/cowbot prova`, `/cowbot scheda`, `/cowbot partita`, `/cowbot orologio`, `/cowbot rischio`) and its buttons. **It does not read chat messages**, and it does not access member lists, direct messages, your email, IP address or other Discord account data.
+The Bot only receives from Discord your interactions with its commands (`/cowbot-prova`, `/cowbot-scheda`, `/cowbot-partita`, `/cowbot-orologio`, `/cowbot-rischio`) and its buttons. **It does not read chat messages**, and it does not access member lists, direct messages, your email, IP address or other Discord account data.
 
 The Bot **stores** in its database:
 
@@ -47,7 +47,7 @@ Interactions also pass through Discord, which processes them under its own [Priv
 
 ## 5. How long we keep it
 
-- Sheets are kept until you delete them with `/cowbot scheda elimina` or ask the controller to delete them.
+- Sheets are kept until you delete them with `/cowbot-scheda elimina` or ask the controller to delete them.
 - A channel's game state is kept while the Bot is used in that server. You can ask the controller to delete it.
 - A channel's participants and clocks are deleted when a new Session starts in that channel.
 - Temporary roll data lasts at most three hours.
@@ -57,7 +57,7 @@ If the Bot is shut down, the database is deleted.
 
 ## 6. Your rights
 
-You have the right to access, rectify and erase your data, to restrict processing, to data portability, and to object to processing based on legitimate interest (Arts. 15–22 GDPR). You can do much of this yourself with `/cowbot scheda`. For anything else, write in the [team's Discord channel](https://discord.gg/Xe86XD6K96) with your Discord user ID: we will reply within one month.
+You have the right to access, rectify and erase your data, to restrict processing, to data portability, and to object to processing based on legitimate interest (Arts. 15–22 GDPR). You can do much of this yourself with `/cowbot-scheda`. For anything else, write in the [team's Discord channel](https://discord.gg/Xe86XD6K96) with your Discord user ID: we will reply within one month.
 
 If you believe the processing breaches the GDPR, you can lodge a complaint with the Italian [Garante per la protezione dei dati personali](https://www.garanteprivacy.it) or with the authority in your country.
 

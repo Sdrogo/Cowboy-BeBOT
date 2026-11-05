@@ -28,7 +28,7 @@ export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context)
           groove: groove && isGrooveId(groove) ? groove : null,
         });
         await i.reply({
-          content: `Creato **${c.name}**, ora è il tuo personaggio attivo. Aggiungi i tratti con \`/cowbot scheda tratto-aggiungi\`: alla creazione ne servono 4, al massimo 2 nello stesso Approccio.`,
+          content: `Creato **${c.name}**, ora è il tuo personaggio attivo. Aggiungi i tratti con \`/cowbot-scheda tratto-aggiungi\`: alla creazione ne servono 4, al massimo 2 nello stesso Approccio.`,
           embeds: [sheetEmbed(c)],
           flags: MessageFlags.Ephemeral,
         });
@@ -38,7 +38,7 @@ export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context)
         const list = ctx.characters.list(userId);
         const text = list.length
           ? list.map((c) => `${c.active ? '▶' : '·'} **${c.name}**${c.concept ? ` · ${c.concept}` : ''}`).join('\n')
-          : 'Nessun personaggio. Creane uno con `/cowbot scheda crea`.';
+          : 'Nessun personaggio. Creane uno con `/cowbot-scheda crea`.';
         await i.reply({ content: text, flags: MessageFlags.Ephemeral });
         return;
       }
@@ -67,7 +67,7 @@ export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context)
 
     // I comandi seguenti agiscono sul personaggio attivo.
     const c = ctx.characters.active(userId);
-    if (!c) throw new SheetError('Non hai un personaggio attivo. Creane uno con `/cowbot scheda crea`.');
+    if (!c) throw new SheetError('Non hai un personaggio attivo. Creane uno con `/cowbot-scheda crea`.');
     let next: Character;
     let note: string;
     switch (sub) {

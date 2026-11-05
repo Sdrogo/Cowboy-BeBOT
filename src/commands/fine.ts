@@ -25,7 +25,7 @@ const MAX_BURDENS = 3;
 
 const isOutcome = (v: string | undefined): v is SessionOutcome => v === 'positiva' || v === 'negativa';
 
-/** /cowbot partita fine: chiede conferma prima di chiudere. */
+/** /cowbot-partita fine: chiede conferma prima di chiudere. */
 export async function askEndSession(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
   const g = ctx.games.get(i.channelId);
   if (!g.sessionType) {
@@ -117,8 +117,8 @@ export async function handleEndComponent(i: ButtonInteraction, ctx: Context): Pr
       return;
     }
     case 'burden': {
-      if (g.sessionType) return void (await ephemeral('È già iniziata un\'altra Session: usa /cowbot scheda fardello.'));
-      if (!g.title) return void (await ephemeral('La Session non aveva un titolo: usa /cowbot scheda fardello.'));
+      if (g.sessionType) return void (await ephemeral('È già iniziata un\'altra Session: usa /cowbot-scheda fardello.'));
+      if (!g.title) return void (await ephemeral('La Session non aveva un titolo: usa /cowbot-scheda fardello.'));
       const c = ctx.characters.active(i.user.id);
       if (!c) return void (await ephemeral('Ti serve un personaggio attivo.'));
       if (c.burdens.some((b) => b.title.toLocaleLowerCase('it') === g.title.toLocaleLowerCase('it'))) {
