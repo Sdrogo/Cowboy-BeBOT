@@ -209,20 +209,18 @@ function spendRows(p: PendingProva, game: Game, clocks: Clock[]): Row[] {
         .setLabel('Shock → Rischio')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(s.shocks === 0 || s.noConvert),
-      new ButtonBuilder()
-        .setCustomId(cid(p, 'r1'))
-        .setLabel(`Rischio: +1 shock (${game.rischio})`)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(game.rischio < 1),
-      ...(turn >= 2
-        ? [
-            new ButtonBuilder()
-              .setCustomId(cid(p, 'r2'))
-              .setLabel('Rischio: +2 shock')
-              .setStyle(ButtonStyle.Secondary)
-              .setDisabled(game.rischio < 1 || s.converted > 0),
-          ]
-        : []),
+      // Svolta 1: 1 Rischio per +1 shock; dalla svolta 2 il Rischio vale +2 shock (p. 34).
+      turn >= 2
+        ? new ButtonBuilder()
+            .setCustomId(cid(p, 'r2'))
+            .setLabel(`Rischio: +2 shock (${game.rischio})`)
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(game.rischio < 1 || s.converted > 0)
+        : new ButtonBuilder()
+            .setCustomId(cid(p, 'r1'))
+            .setLabel(`Rischio: +1 shock (${game.rischio})`)
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(game.rischio < 1),
     ),
   );
   return rows;
@@ -371,6 +369,7 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
       case 'r2': {
         if (game.rischio < 1) break;
         const two = action === 'r2';
+        if (!two && p.result.input.turn >= 2) break;
         if (two && (p.result.input.turn < 2 || s.converted > 0)) break;
         const g = ctx.games.save({ ...game, rischio: game.rischio - 1 });
         s.shocks += two ? 2 : 1;

@@ -37,7 +37,7 @@ export const AREAS = {
     { id: 'fine', label: 'fine · chiudi la Session (Big Shot)', required: ['esito'] },
     { id: 'the-end', label: 'the-end · finale di stagione' },
     { id: 'stato', label: 'stato · svolta, Difficoltà, Genere' },
-    { id: 'svolta', label: 'svolta · passa a una nuova svolta', required: ['numero'] },
+    { id: 'svolta', label: 'svolta · passa alla svolta successiva' },
     { id: 'difficolta', label: 'difficolta · cambia la Difficoltà', ranges: { valore: [0, 99] } },
     { id: 'genere', label: 'genere · imposta il Genere', required: ['approccio'] },
     { id: 'shock-minimo', label: 'shock-minimo · shock minimo per Prova', required: ['valore'], ranges: { valore: [1, 2] } },
