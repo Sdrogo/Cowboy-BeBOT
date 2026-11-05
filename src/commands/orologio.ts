@@ -2,6 +2,7 @@ import { AttachmentBuilder, MessageFlags, type AutocompleteInteraction, type Cha
 import { isApproach } from '../engine/rules.js';
 import { CLOCK_KINDS, threatOutcome, type Clock, type ClockKind, type MarkSource } from '../engine/session.js';
 import type { Context } from '../context.js';
+import { actionOf, actionOfAutocomplete } from './actions.js';
 import { renderClocksCard } from '../render/clocksCard.js';
 import { SheetError } from '../store/characters.js';
 
@@ -56,7 +57,7 @@ export async function clocksAttachment(ctx: Context, channelId: string, highligh
 }
 
 export async function handleOrologio(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
-  const sub = i.options.getSubcommand();
+  const sub = actionOf(i);
   const channelId = i.channelId;
   const game = ctx.games.get(channelId);
   const isBigShot = !game.bigShotId || game.bigShotId === i.user.id;
@@ -124,7 +125,9 @@ function findClock(ctx: Context, channelId: string, name: string): Clock {
 
 export async function autocompleteOrologio(i: AutocompleteInteraction, ctx: Context): Promise<void> {
   const typed = i.options.getFocused().toLocaleLowerCase('it');
-  const open = i.options.getSubcommand() === 'segna';
+  const action = actionOfAutocomplete(i);
+  if (action === 'crea') return void (await i.respond([]));
+  const open = action === 'segna';
   await i.respond(
     ctx.clocks
       .list(i.channelId, !open)

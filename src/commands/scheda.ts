@@ -1,6 +1,7 @@
 import { EmbedBuilder, MessageFlags, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import { APPROACHES, GROOVES, MAX_CARTRIDGES, isGrooveId, type TraitSlot } from '../engine/rules.js';
 import type { Context } from '../context.js';
+import { actionOf, actionOfAutocomplete } from './actions.js';
 import { approachColorInt } from '../render/theme.js';
 import {
   SheetError,
@@ -15,7 +16,7 @@ import {
 } from '../store/characters.js';
 
 export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
-  const sub = i.options.getSubcommand();
+  const sub = actionOf(i);
   const userId = i.user.id;
   try {
     switch (sub) {
@@ -28,7 +29,7 @@ export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context)
           groove: groove && isGrooveId(groove) ? groove : null,
         });
         await i.reply({
-          content: `Creato **${c.name}**, ora è il tuo personaggio attivo. Aggiungi i tratti con \`/cowbot-scheda tratto-aggiungi\`: alla creazione ne servono 4, al massimo 2 nello stesso Approccio.`,
+          content: `Creato **${c.name}**, ora è il tuo personaggio attivo. Aggiungi i tratti con \`/cowbot-scheda azione:tratto-aggiungi\`: alla creazione ne servono 4, al massimo 2 nello stesso Approccio.`,
           embeds: [sheetEmbed(c)],
           flags: MessageFlags.Ephemeral,
         });
@@ -38,7 +39,7 @@ export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context)
         const list = ctx.characters.list(userId);
         const text = list.length
           ? list.map((c) => `${c.active ? '▶' : '·'} **${c.name}**${c.concept ? ` · ${c.concept}` : ''}`).join('\n')
-          : 'Nessun personaggio. Creane uno con `/cowbot-scheda crea`.';
+          : 'Nessun personaggio. Creane uno con `/cowbot-scheda azione:crea`.';
         await i.reply({ content: text, flags: MessageFlags.Ephemeral });
         return;
       }
@@ -67,7 +68,7 @@ export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context)
 
     // I comandi seguenti agiscono sul personaggio attivo.
     const c = ctx.characters.active(userId);
-    if (!c) throw new SheetError('Non hai un personaggio attivo. Creane uno con `/cowbot-scheda crea`.');
+    if (!c) throw new SheetError('Non hai un personaggio attivo. Creane uno con `/cowbot-scheda azione:crea`.');
     let next: Character;
     let note: string;
     switch (sub) {
@@ -178,8 +179,10 @@ export function sheetEmbed(c: Character): EmbedBuilder {
 
 export async function autocompleteScheda(i: AutocompleteInteraction, ctx: Context): Promise<void> {
   const typed = i.options.getFocused().toLocaleLowerCase('it');
-  const sub = i.options.getSubcommand();
+  const sub = actionOfAutocomplete(i) ?? '';
   let names: string[];
+  // Per crea e tratto-aggiungi il nome è nuovo: niente suggerimenti.
+  if (sub === 'crea' || sub === 'tratto-aggiungi') return void (await i.respond([]));
   if (sub.startsWith('tratto')) {
     names = ctx.characters.active(i.user.id)?.traits.map((t) => t.name) ?? [];
   } else {

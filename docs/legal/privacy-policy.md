@@ -47,7 +47,7 @@ Interactions also pass through Discord, which processes them under its own [Priv
 
 ## 5. How long we keep it
 
-- Sheets are kept until you delete them with `/cowbot-scheda elimina` or ask the controller to delete them.
+- Sheets are kept until you delete them with `/cowbot-scheda azione:elimina` or ask the controller to delete them.
 - A channel's game state is kept while the Bot is used in that server. You can ask the controller to delete it.
 - A channel's participants and clocks are deleted when a new Session starts in that channel.
 - Temporary roll data lasts at most three hours.

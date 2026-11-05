@@ -17,3 +17,8 @@ export const APPROACH_COLORS: Record<Approach, string> = {
 
 /** Stessi colori come intero, per gli embed di Discord. */
 export const approachColorInt = (a: Approach): number => parseInt(APPROACH_COLORS[a].slice(1), 16);
+
+/** Orologi positivi (obiettivo, inseguimento, altro): verdi, con tonalità diverse per distinguerli. */
+export const POSITIVE_CLOCK_COLORS = ['#3FB86A', '#8BD04E', '#1F9E86', '#B5DC5A', '#5CC9A0'];
+/** Orologi negativi (minaccia): rossi, con tonalità diverse. */
+export const NEGATIVE_CLOCK_COLORS = ['#E04545', '#F06A5A', '#B52B3A', '#F2877B', '#CC3358'];
