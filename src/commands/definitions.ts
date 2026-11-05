@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, type SlashCommandStringOption } from 'discord.js';
+import { SlashCommandBuilder, type SlashCommandStringOption, type SlashCommandSubcommandBuilder } from 'discord.js';
 import { AREAS, type ActionSpec, type AreaName } from './actions.js';
 import { APPROACHES, MAX_CARTRIDGES } from '../engine/rules.js';
 
@@ -7,9 +7,9 @@ export const ROOT_COMMAND = 'cowbot';
 
 const approachChoices = APPROACHES.map((a) => ({ name: a, value: a }));
 
-const provaCommand = (s: SlashCommandBuilder) =>
+const provaCommand = (s: SlashCommandSubcommandBuilder) =>
   s
-  .setName(`${ROOT_COMMAND}-prova`)
+  .setName('prova')
   .setDescription('Tira una Prova con il tuo personaggio attivo')
   .addStringOption((o) =>
     o.setName('approccio').setDescription('Rock, Dance, Blues, Tango o Jazz').setRequired(true).addChoices(...approachChoices),
@@ -37,8 +37,8 @@ const actionOption = (specs: readonly ActionSpec[]) => (o: SlashCommandStringOpt
     .setRequired(true)
     .addChoices(...specs.map((a) => ({ name: a.label, value: a.id })));
 
-const areaCommand = (name: AreaName, description: string) => (c: SlashCommandBuilder) =>
-  c.setName(`${ROOT_COMMAND}-${name}`).setDescription(description).addStringOption(actionOption(AREAS[name]));
+const areaCommand = (name: AreaName, description: string) => (c: SlashCommandSubcommandBuilder) =>
+  c.setName(name).setDescription(description).addStringOption(actionOption(AREAS[name]));
 
 const schedaCommand = areaCommand('scheda', 'Gestisci le schede dei tuoi personaggi');
 const partitaCommand = areaCommand('partita', 'Stato della partita in questo canale');
@@ -46,16 +46,18 @@ const orologioCommand = areaCommand('orologio', 'Orologi della svolta: obiettivi
 const rischioCommand = areaCommand('rischio', 'Il Rischio del Big Shot');
 
 /**
- * Un comando di primo livello per area, con un campo `azione` che elenca tutto
- * quello che si può fare:
- * - /cowbot-prova
- * - /cowbot-scheda, /cowbot-partita, /cowbot-orologio, /cowbot-rischio: scegli l'azione
- *   e il bot apre un form con i soli campi che servono (src/commands/forms.ts)
+ * Un solo comando, /cowbot, con un sottocomando per area:
+ * - /cowbot prova
+ * - /cowbot scheda | partita | orologio | rischio: scegli l'azione e il bot
+ *   apre un form con i soli campi che servono (src/commands/forms.ts)
  */
 export const allCommands = [
-  provaCommand(new SlashCommandBuilder()),
-  schedaCommand(new SlashCommandBuilder()),
-  partitaCommand(new SlashCommandBuilder()),
-  orologioCommand(new SlashCommandBuilder()),
-  rischioCommand(new SlashCommandBuilder()),
+  new SlashCommandBuilder()
+    .setName(ROOT_COMMAND)
+    .setDescription('Cowboy BeBOT: Prove, schede, partita, orologi e Rischio')
+    .addSubcommand(provaCommand)
+    .addSubcommand(schedaCommand)
+    .addSubcommand(partitaCommand)
+    .addSubcommand(orologioCommand)
+    .addSubcommand(rischioCommand),
 ];

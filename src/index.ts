@@ -35,9 +35,9 @@ client.on(Events.InteractionCreate, (i) => {
 
 async function route(i: Interaction, ctx: Context): Promise<void> {
   if (i.isAutocomplete() || i.isChatInputCommand()) {
-    // /cowbot-prova, oppure /cowbot-<area>: si sceglie l'azione e si compila il form.
-    if (!i.commandName.startsWith(`${ROOT_COMMAND}-`)) return;
-    const area = i.commandName.slice(ROOT_COMMAND.length + 1);
+    // /cowbot prova, oppure /cowbot <area>: si sceglie l'azione e si compila il form.
+    if (i.commandName !== ROOT_COMMAND) return;
+    const area = i.options.getSubcommand();
     if (i.isAutocomplete()) {
       if (area === 'prova') return autocompleteProva(i, ctx);
       return;

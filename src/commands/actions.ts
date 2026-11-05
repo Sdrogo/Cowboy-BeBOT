@@ -3,7 +3,7 @@ import type { Args } from './args.js';
 import { MAX_CARTRIDGES, MAX_RITMO } from '../engine/rules.js';
 
 /**
- * Ogni area (/cowbot-scheda, /cowbot-partita, ...) ha un campo `azione` che
+ * Ogni area (/cowbot scheda, /cowbot partita, ...) ha un campo `azione` che
  * elenca tutte le azioni possibili. Discord non permette opzioni che cambiano
  * con la scelta, quindi le opzioni sono tutte facoltative e le controlliamo qui.
  */

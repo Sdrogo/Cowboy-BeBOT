@@ -69,7 +69,7 @@ export function formFor(area: AreaName, action: string, ctx: Context, userId: st
     case 'scheda:mostra':
     case 'scheda:elimina': {
       const list = ctx.characters.list(userId).slice(0, 25);
-      if (!list.length) return 'Non hai personaggi: creane uno con `/cowbot-scheda azione:crea`.';
+      if (!list.length) return 'Non hai personaggi: creane uno con `/cowbot scheda azione:crea`.';
       return [select('nome', 'Personaggio', list.map((c) => ({ label: c.name, value: c.name })), { required: action !== 'mostra' })];
     }
     case 'scheda:modifica':

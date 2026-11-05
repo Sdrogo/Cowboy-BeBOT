@@ -9,15 +9,18 @@ import { buildModal, formFor } from './forms.js';
 const json = allCommands.map((c) => c.toJSON());
 
 describe('slash command', () => {
-  it('registra un comando /cowbot-<area> per ogni area', () => {
-    expect(json.map((c) => c.name)).toEqual(['cowbot-prova', 'cowbot-scheda', 'cowbot-partita', 'cowbot-orologio', 'cowbot-rischio']);
+  const subs = (json[0]!.options ?? []) as { name: string; options?: { name: string; choices?: { value: string }[] }[] }[];
+
+  it('registra un solo /cowbot con un sottocomando per area', () => {
+    expect(json.map((c) => c.name)).toEqual(['cowbot']);
+    expect(subs.map((c) => c.name)).toEqual(['prova', 'scheda', 'partita', 'orologio', 'rischio']);
   });
 
   it('ogni area ha solo il campo azione, con tutte le azioni', () => {
     for (const [area, specs] of Object.entries(AREAS)) {
-      const c = json.find((x) => x.name === `cowbot-${area}`)!;
+      const c = subs.find((x) => x.name === area)!;
       expect(c.options?.map((o) => o.name)).toEqual(['azione']);
-      const choices = (c.options?.[0] as { choices?: { value: string }[] }).choices ?? [];
+      const choices = c.options?.[0]?.choices ?? [];
       expect(choices.map((x) => x.value)).toEqual(specs.map((s) => s.id));
     }
   });
