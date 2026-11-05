@@ -424,9 +424,21 @@ export async function autocompleteProva(i: AutocompleteInteraction, ctx: Context
   const approach = i.options.getString('approccio');
   const slots = approach && isApproach(approach) ? [...usableTraitSlots(approach, c.groove), 'MONO'] : null;
   const typed = i.options.getFocused().toLocaleLowerCase('it');
+  const disadvantage = i.options.getBoolean('svantaggio') ?? false;
+  const focusedName = i.options.getFocused(true).name;
+  // Tratti già scelti negli altri campi: ognuno vale una sola volta per Prova.
+  const taken = new Set(
+    ['tratto1', 'tratto2', 'tratto3']
+      .filter((n) => n !== focusedName)
+      .map((n) => i.options.getString(n))
+      .filter((v): v is string => Boolean(v && v.trim()))
+      .map((v) => findTrait(c, v)?.name),
+  );
   const choices = c.traits
     .filter((t) => (slots ? slots.includes(t.slot) : true))
-    .filter((t) => t.wound === 0 || c.groove === 'testa-dura')
+    .filter((t) => !taken.has(t.name))
+    // Ferito: inutilizzabile; grave: mai; Testa Dura solo con Svantaggio.
+    .filter((t) => t.wound === 0 || (t.wound === 1 && c.groove === 'testa-dura' && disadvantage))
     .filter((t) => t.name.toLocaleLowerCase('it').includes(typed))
     .slice(0, 25)
     .map((t) => ({ name: `${t.name} · ${t.slot}${t.wound ? ' (ferito)' : ''}`, value: t.name }));

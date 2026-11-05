@@ -229,7 +229,7 @@ export function checkTraitsForProva(
     if (!t) {
       errors.push(`«${raw}» non è sulla scheda di ${c.name}.`);
     } else if (ok.includes(t)) {
-      continue;
+      errors.push(`«${t.name}» è stato scelto più volte: ogni tratto vale una sola volta per Prova.`);
     } else if (t.slot !== 'MONO' && !slots.includes(t.slot)) {
       errors.push(`«${t.name}» è un tratto ${t.slot}: non vale in una Prova ${approach}.`);
     } else if (t.wound === 2) {
