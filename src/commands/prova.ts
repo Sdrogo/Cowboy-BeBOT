@@ -18,7 +18,8 @@ import type { Context, PendingProva } from '../context.js';
 import { renderProvaCard } from '../render/provaCard.js';
 import { SheetError, checkTraitsForProva, findTrait, setCartridges, setWound, type Character } from '../store/characters.js';
 import type { Game } from '../store/games.js';
-import { clocksAlt, clocksCardData, markClock } from './orologio.js';
+import { clocksAlt, clocksCardData, closureAttachment, markClock } from './orologio.js';
+import type { ClockClosedData } from '../render/clockClosedCard.js';
 import type { ClocksCardData } from '../render/clocksCard.js';
 
 export const PROVA_PREFIX = 'prova';
@@ -294,6 +295,7 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
   await i.deferUpdate();
   try {
     let extra: ClocksCardData | null = null;
+    let closure: ClockClosedData | null = null;
     let done = false;
     const s = p.spend;
     switch (action) {
@@ -339,7 +341,7 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
         if (bySuccess) s.successes--;
         else s.shocks--;
         s.log.push(`${bySuccess ? 'Successo' : 'Shock'} su «${clock.name}»: ${res.clock.marks}/${res.clock.size}${res.closed ? ', chiuso' : ''}.`);
-        if (res.lines.length) await followUp(i, res.lines.join('\n'));
+        closure = res.closure;
         extra = clocksCardData(ctx, p.channelId, clock.id, res.note);
         break;
       }
@@ -384,6 +386,8 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
         return;
     }
     await i.editReply(await provaMessage(ctx, p, c, extra, done));
+    // La chiusura di un orologio è un momento: una card a parte, per tutto il tavolo.
+    if (closure) await announce(i, { files: [await closureAttachment(closure)] });
   } catch (err) {
     if (err instanceof SheetError) {
       await i.followUp({ content: err.message, flags: MessageFlags.Ephemeral });
@@ -394,9 +398,9 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
 }
 
 /** Gli eventi importanti (fine svolta) vanno in un messaggio a parte, visibile a tutti. */
-async function followUp(i: ButtonInteraction | StringSelectMenuInteraction, text: string): Promise<void> {
+async function announce(i: ButtonInteraction | StringSelectMenuInteraction, message: { files: AttachmentBuilder[] }): Promise<void> {
   const channel = i.channel;
-  if (channel && 'send' in channel) await channel.send(text).catch(() => {});
+  if (channel && 'send' in channel) await channel.send(message).catch(() => {});
 }
 
 function applyWound(ctx: Context, p: PendingProva, c: Character, traitName: string): Character {

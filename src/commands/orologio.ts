@@ -4,6 +4,7 @@ import { CLOCK_KINDS, threatOutcome, type Clock, type ClockKind, type MarkSource
 import type { Context } from '../context.js';
 import type { Args, Interactive } from './args.js';
 import { renderClocksCard, type ClocksCardData } from '../render/clocksCard.js';
+import { renderClockClosedCard, type ClockClosedData } from '../render/clockClosedCard.js';
 import { SheetError } from '../store/characters.js';
 
 export interface MarkResult {
@@ -13,6 +14,8 @@ export interface MarkResult {
   lines: string[];
   /** Nota in fondo alla card degli orologi. */
   note: string | null;
+  /** Dati della card di chiusura, se l'orologio si è chiuso. */
+  closure: ClockClosedData | null;
 }
 
 /**
@@ -23,11 +26,18 @@ export function markClock(ctx: Context, channelId: string, clock: Clock, source:
   const { clock: next, closed } = ctx.clocks.mark(clock, source);
   const lines: string[] = [];
   let note: string | null = null;
+  let closure: ClockClosedData | null = null;
   if (closed) {
     switch (next.kind) {
       case 'obiettivo':
         note = `«${next.name}» chiuso: la svolta termina in positivo.`;
         lines.push(`**${note}** Il Big Shot può assegnare un Tratto Session.`);
+        closure = {
+          clock: next,
+          headline: 'Obiettivo raggiunto',
+          verdict: 'La svolta termina in positivo',
+          detail: 'Il Big Shot può assegnare un Tratto Session.',
+        };
         break;
       case 'minaccia': {
         const outcome = threatOutcome(next.approach);
@@ -35,28 +45,45 @@ export function markClock(ctx: Context, channelId: string, clock: Clock, source:
         ctx.games.save({ ...game, nextTurnEffects: { ...game.nextTurnEffects, ...outcome.effects } });
         note = `«${next.name}» chiuso: la svolta termina in negativo. ${outcome.text.replace(/\*/g, '')}`;
         lines.push(`**«${next.name}» chiuso: la svolta termina in negativo.** ${outcome.text}`);
+        closure = {
+          clock: next,
+          headline: 'Minaccia scatenata',
+          verdict: 'La svolta termina in negativo',
+          detail: outcome.text.replace(/\*/g, ''),
+        };
         break;
       }
       case 'inseguimento':
         note = `«${next.name}» chiuso: l'inseguimento finisce.`;
         lines.push(`**${note}** La svolta termina, di solito in positivo.`);
+        closure = { clock: next, headline: 'Inseguimento concluso', verdict: 'La svolta termina, di solito in positivo', detail: '' };
         break;
       default:
         note = `«${next.name}» chiuso: l'evento accade.`;
         lines.push(`**${note}**`);
+        closure = { clock: next, headline: 'Orologio chiuso', verdict: "L'evento accade", detail: '' };
     }
   }
-  return { clock: next, closed, lines, note };
+  return { clock: next, closed, lines, note, closure };
 }
 
 export function clocksCardData(ctx: Context, channelId: string, highlightId: number | null, note: string | null): ClocksCardData {
-  const clocks = ctx.clocks.list(channelId).filter((c) => !c.closed || c.id === highlightId);
+  // Anche gli orologi chiusi restano in lista (segnati CHIUSO) fino alla fine della Session.
+  const clocks = ctx.clocks.list(channelId);
   return { title: 'Orologi', subtitle: 'In questo canale', clocks, highlightId, note };
 }
 
 /** Testo alternativo di una card degli orologi. */
 export function clocksAlt(d: ClocksCardData): string {
   return d.clocks.map((c) => `${c.name}: ${c.marks} su ${c.size}${c.closed ? ', chiuso' : ''}`).join('; ') || 'Nessun orologio';
+}
+
+/** Card di chiusura di un orologio, da mostrare a tutto il tavolo. */
+export async function closureAttachment(c: ClockClosedData) {
+  return new AttachmentBuilder(await renderClockClosedCard(c), {
+    name: 'orologio-chiuso.png',
+    description: `${c.headline}: «${c.clock.name}». ${c.verdict}. ${c.detail}`.trim(),
+  });
 }
 
 export async function clocksAttachment(ctx: Context, channelId: string, highlightId: number | null, note: string | null) {
@@ -96,15 +123,15 @@ export async function handleOrologio(i: Interactive, ctx: Context, sub: string, 
         const clock = findClock(ctx, channelId, a.reqStr('nome'));
         const times = a.int('sezioni') ?? 1;
         let result: MarkResult | null = null;
-        const lines: string[] = [];
         for (let k = 0; k < times && !(result?.closed ?? false); k++) {
           result = markClock(ctx, channelId, result?.clock ?? clock, { by: 'manuale' });
-          lines.push(...result.lines);
         }
         await i.reply({
-          content: [`Segnato **${clock.name}**.`, ...lines].join('\n'),
-          files: [await clocksAttachment(ctx, channelId, clock.id, result?.note ?? null)],
+          content: `Segnato **${clock.name}**.`,
+          files: [await clocksAttachment(ctx, channelId, clock.id, null)],
         });
+        // La chiusura è un momento: una card a parte, per tutto il tavolo.
+        if (result?.closure) await i.followUp({ files: [await closureAttachment(result.closure)] });
         return;
       }
       case 'elimina': {
