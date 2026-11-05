@@ -49,11 +49,19 @@ function clean(children: Child[]): Child[] {
 
 /** Renderizza un albero in PNG. `scale` 2 dà un'immagine nitida sugli schermi ad alta densità. */
 export async function renderPng(node: Node, width: number, scale = 2): Promise<Buffer> {
+  const start = performance.now();
   // Satori accetta qualsiasi oggetto con forma da elemento React.
   const svgText = await satori(node as unknown as Parameters<typeof satori>[0], {
     width,
     fonts: loadFonts(),
   });
   const png = new Resvg(svgText, { fitTo: { mode: 'width', value: width * scale } }).render().asPng();
+  const ms = Math.round(performance.now() - start);
+  if (ms > 1000) console.warn(`Disegno lento: ${ms} ms (${width * scale}px di larghezza)`);
   return Buffer.from(png);
+}
+
+/** Carica font e motore di disegno, così la prima card non paga il costo di avvio. */
+export async function warmUpRenderer(): Promise<void> {
+  await renderPng(div({ width: 40, height: 20, fontFamily: 'Plex Sans' }, 'ok'), 40, 1);
 }

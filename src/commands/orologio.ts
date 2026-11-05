@@ -3,7 +3,7 @@ import { isApproach } from '../engine/rules.js';
 import { CLOCK_KINDS, threatOutcome, type Clock, type ClockKind, type MarkSource } from '../engine/session.js';
 import type { Context } from '../context.js';
 import type { Args, Interactive } from './args.js';
-import { renderClocksCard } from '../render/clocksCard.js';
+import { renderClocksCard, type ClocksCardData } from '../render/clocksCard.js';
 import { SheetError } from '../store/characters.js';
 
 export interface MarkResult {
@@ -49,11 +49,19 @@ export function markClock(ctx: Context, channelId: string, clock: Clock, source:
   return { clock: next, closed, lines, note };
 }
 
-export async function clocksAttachment(ctx: Context, channelId: string, highlightId: number | null, note: string | null) {
+export function clocksCardData(ctx: Context, channelId: string, highlightId: number | null, note: string | null): ClocksCardData {
   const clocks = ctx.clocks.list(channelId).filter((c) => !c.closed || c.id === highlightId);
-  const png = await renderClocksCard({ title: 'Orologi', subtitle: 'In questo canale', clocks, highlightId, note });
-  const alt = clocks.map((c) => `${c.name}: ${c.marks} su ${c.size}${c.closed ? ', chiuso' : ''}`).join('; ');
-  return new AttachmentBuilder(png, { name: 'orologi.png', description: alt || 'Nessun orologio' });
+  return { title: 'Orologi', subtitle: 'In questo canale', clocks, highlightId, note };
+}
+
+/** Testo alternativo di una card degli orologi. */
+export function clocksAlt(d: ClocksCardData): string {
+  return d.clocks.map((c) => `${c.name}: ${c.marks} su ${c.size}${c.closed ? ', chiuso' : ''}`).join('; ') || 'Nessun orologio';
+}
+
+export async function clocksAttachment(ctx: Context, channelId: string, highlightId: number | null, note: string | null) {
+  const data = clocksCardData(ctx, channelId, highlightId, note);
+  return new AttachmentBuilder(await renderClocksCard(data), { name: 'orologi.png', description: clocksAlt(data) });
 }
 
 export async function handleOrologio(i: Interactive, ctx: Context, sub: string, a: Args): Promise<void> {
