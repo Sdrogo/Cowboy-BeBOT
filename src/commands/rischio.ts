@@ -1,6 +1,6 @@
-import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags } from 'discord.js';
 import type { Context } from '../context.js';
-import { actionOf } from './actions.js';
+import type { Args, Interactive } from './args.js';
 import { SheetError } from '../store/characters.js';
 import type { Game } from '../store/games.js';
 import { gameEmbed } from './partita.js';
@@ -18,14 +18,13 @@ function startOfTurn(g: Game, what: string): void {
   }
 }
 
-export async function handleRischio(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
-  const sub = actionOf(i);
+export async function handleRischio(i: Interactive, ctx: Context, sub: string, a: Args): Promise<void> {
   const g = ctx.games.get(i.channelId);
   try {
     switch (sub) {
       case 'difficolta': {
         startOfTurn(g, 'Alzare la Difficoltà con il Rischio');
-        const n = i.options.getInteger('quantita', true);
+        const n = a.reqInt('quantita');
         const next = ctx.games.save({ ...spend(g, i.user.id, n), difficulty: g.difficulty + n });
         await i.reply({
           content: `Il Big Shot spende **${n} Rischio**: la Difficoltà sale a **${next.difficulty}**.`,
@@ -46,7 +45,7 @@ export async function handleRischio(i: ChatInputCommandInteraction, ctx: Context
         return;
       }
       case 'svantaggio': {
-        const target = i.options.getUser('giocatore');
+        const target = a.user('giocatore');
         const next = ctx.games.save({ ...spend(g, i.user.id, 1), disadvantageFor: target?.id ?? '*' });
         await i.reply({
           content: `Il Big Shot spende 1 Rischio: la prossima Prova${target ? ` di ${target}` : ''} si tira con **Svantaggio**.`,
@@ -56,7 +55,7 @@ export async function handleRischio(i: ChatInputCommandInteraction, ctx: Context
       }
       case 'imposta': {
         if (g.bigShotId && g.bigShotId !== i.user.id) throw new SheetError('Il Rischio lo corregge solo il Big Shot.');
-        const next = ctx.games.save({ ...g, rischio: i.options.getInteger('valore', true) });
+        const next = ctx.games.save({ ...g, rischio: a.reqInt('valore') });
         await i.reply({ content: `Rischio del Big Shot: **${next.rischio}** (era ${g.rischio}).`, embeds: [gameEmbed(next)] });
         return;
       }

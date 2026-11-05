@@ -5,7 +5,6 @@ import {
   ButtonStyle,
   MessageFlags,
   type ButtonInteraction,
-  type ChatInputCommandInteraction,
 } from 'discord.js';
 import { MAX_CARTRIDGES } from '../engine/rules.js';
 import {
@@ -16,6 +15,7 @@ import {
   type SessionOutcome,
 } from '../engine/session.js';
 import type { Context } from '../context.js';
+import type { Args, Interactive } from './args.js';
 import { renderEndCard, renderTheEndCard, type EndCardPlayer } from '../render/endCard.js';
 import { newGame } from '../store/games.js';
 
@@ -26,7 +26,7 @@ const MAX_BURDENS = 3;
 const isOutcome = (v: string | undefined): v is SessionOutcome => v === 'positiva' || v === 'negativa';
 
 /** /cowbot-partita azione:fine: chiede conferma prima di chiudere. */
-export async function askEndSession(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
+export async function askEndSession(i: Interactive, ctx: Context, a: Args): Promise<void> {
   const g = ctx.games.get(i.channelId);
   if (!g.sessionType) {
     await i.reply({ content: 'Non c\'è una Session in corso in questo canale.', flags: MessageFlags.Ephemeral });
@@ -36,7 +36,7 @@ export async function askEndSession(i: ChatInputCommandInteraction, ctx: Context
     await i.reply({ content: 'La Session la chiude il Big Shot.', flags: MessageFlags.Ephemeral });
     return;
   }
-  const outcome = i.options.getString('esito', true);
+  const outcome = a.reqStr('esito');
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`${END_PREFIX}:end:${outcome}`).setLabel('Chiudi la Session').setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId(`${END_PREFIX}:cancel`).setLabel('Annulla').setStyle(ButtonStyle.Secondary),
@@ -136,7 +136,7 @@ export async function handleEndComponent(i: ButtonInteraction, ctx: Context): Pr
 }
 
 /** The End per il personaggio attivo di chi lo chiede. */
-export async function replyTheEnd(i: ButtonInteraction | ChatInputCommandInteraction, ctx: Context): Promise<void> {
+export async function replyTheEnd(i: ButtonInteraction | Interactive, ctx: Context): Promise<void> {
   const c = ctx.characters.active(i.user.id);
   if (!c) {
     await i.reply({ content: 'Ti serve un personaggio attivo.', flags: MessageFlags.Ephemeral });

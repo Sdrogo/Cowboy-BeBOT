@@ -6,7 +6,6 @@ import {
   EmbedBuilder,
   MessageFlags,
   type ButtonInteraction,
-  type ChatInputCommandInteraction,
 } from 'discord.js';
 import { MAX_RITMO, TURNS, isApproach, type Approach, type TurnNumber } from '../engine/rules.js';
 import {
@@ -19,7 +18,7 @@ import {
   type PlayerSheet,
 } from '../engine/session.js';
 import type { Context } from '../context.js';
-import { actionOf } from './actions.js';
+import type { Args, Interactive } from './args.js';
 import { enterTurn, newGame, type Game } from '../store/games.js';
 import { renderSessionCard } from '../render/sessionCard.js';
 import { approachColorInt } from '../render/theme.js';
@@ -150,21 +149,20 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
   }
 }
 
-export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
-  const sub = actionOf(i);
+export async function handlePartita(i: Interactive, ctx: Context, sub: string, a: Args): Promise<void> {
   const g = ctx.games.get(i.channelId);
   switch (sub) {
     case 'sessione': {
-      const type = i.options.getString('tipo', true);
+      const type = a.reqStr('tipo');
       if (!isSessionType(type)) throw new Error('Tipo di Session non valido');
       ctx.games.clearPlayers(i.channelId);
       ctx.clocks.clear(i.channelId);
       const fresh = newGame(i.channelId);
-      const genre = i.options.getString('approccio');
+      const genre = a.str('approccio');
       ctx.games.save({
         ...fresh,
         sessionType: type,
-        title: i.options.getString('titolo') ?? '',
+        title: a.str('titolo') ?? '',
         bigShotId: i.user.id,
         genre: genre && isApproach(genre) ? genre : null,
       });
@@ -179,7 +177,7 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       return;
     }
     case 'fine':
-      await askEndSession(i, ctx);
+      await askEndSession(i, ctx, a);
       return;
     case 'the-end':
       await replyTheEnd(i, ctx);
@@ -188,17 +186,17 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       await i.reply({ embeds: [gameEmbed(g)] });
       return;
     case 'svolta': {
-      const n = i.options.getInteger('numero', true) as TurnNumber;
+      const n = a.reqInt('numero') as TurnNumber;
       // Orologi della nuova svolta (p. 23): un obiettivo e una minaccia, creati insieme alla svolta.
       const wanted = [
-        { kind: 'obiettivo' as const, name: i.options.getString('obiettivo') },
-        { kind: 'minaccia' as const, name: i.options.getString('minaccia') },
+        { kind: 'obiettivo' as const, name: a.str('obiettivo') },
+        { kind: 'minaccia' as const, name: a.str('minaccia') },
       ].filter((c): c is { kind: 'obiettivo' | 'minaccia'; name: string } => !!c.name?.trim());
       const reply = (content: string) => i.reply({ content, flags: MessageFlags.Ephemeral });
       let approach: string | null = null;
       if (wanted.length) {
         if (g.bigShotId && g.bigShotId !== i.user.id) return void (await reply('Gli orologi li crea il Big Shot (p. 23).'));
-        approach = i.options.getString('approccio') ?? g.genre;
+        approach = a.str('approccio') ?? g.genre;
         if (!approach || !isApproach(approach)) {
           return void (await reply('Per creare gli orologi serve un Approccio: indicalo, oppure imposta prima il Genere della Session.'));
         }
@@ -213,7 +211,7 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       const created = wanted.map((c) =>
         ctx.clocks.create(i.channelId, {
           name: c.name,
-          size: i.options.getInteger('calibro') ?? 4,
+          size: a.int('calibro') ?? 4,
           approach: approach as Approach,
           kind: c.kind,
         }),
@@ -225,8 +223,8 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       return;
     }
     case 'difficolta': {
-      const delta = i.options.getInteger('variazione');
-      const value = i.options.getInteger('valore');
+      const delta = a.int('variazione');
+      const value = a.int('valore');
       const difficulty = Math.max(0, value ?? g.difficulty + (delta ?? 0));
       if (g.difficultyLocked && difficulty < g.difficulty) {
         await i.reply({ content: 'Minaccia Jazz: in questa svolta la Difficoltà non può scendere (p. 25).', flags: MessageFlags.Ephemeral });
@@ -238,13 +236,13 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       return;
     }
     case 'genere': {
-      const raw = i.options.getString('approccio', true);
+      const raw = a.reqStr('approccio');
       const next = ctx.games.save({ ...g, genre: isApproach(raw) ? raw : null });
       await i.reply(next.genre ? `Genere della Session: **${next.genre}**. I suoi tratti danno +1 dado.` : 'Nessun Genere per questa Session.');
       return;
     }
     case 'shock-minimo': {
-      const next = ctx.games.save({ ...g, minShock: i.options.getInteger('valore', true) });
+      const next = ctx.games.save({ ...g, minShock: a.reqInt('valore') });
       await i.reply(`Ogni Prova ora produce almeno **${next.minShock}** shock.`);
       return;
     }

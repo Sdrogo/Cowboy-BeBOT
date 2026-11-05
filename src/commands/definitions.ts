@@ -1,13 +1,11 @@
 import { SlashCommandBuilder, type SlashCommandStringOption } from 'discord.js';
-import { AREAS, type ActionSpec } from './actions.js';
-import { APPROACHES, GROOVES, GROOVE_IDS, MAX_CARTRIDGES, MAX_RITMO } from '../engine/rules.js';
-import { CLOCK_KINDS, CLOCK_SIZES, SESSION_LABELS, SESSION_TYPES } from '../engine/session.js';
+import { AREAS, type ActionSpec, type AreaName } from './actions.js';
+import { APPROACHES, MAX_CARTRIDGES } from '../engine/rules.js';
 
 /** Prefisso comune dei comandi del bot. */
 export const ROOT_COMMAND = 'cowbot';
 
 const approachChoices = APPROACHES.map((a) => ({ name: a, value: a }));
-const grooveChoices = GROOVE_IDS.map((id) => ({ name: GROOVES[id].name, value: id }));
 
 const provaCommand = (s: SlashCommandBuilder) =>
   s
@@ -39,115 +37,20 @@ const actionOption = (specs: readonly ActionSpec[]) => (o: SlashCommandStringOpt
     .setRequired(true)
     .addChoices(...specs.map((a) => ({ name: a.label, value: a.id })));
 
-const nomeOption = (desc: string) => (o: SlashCommandStringOption) =>
-  o.setName('nome').setDescription(desc).setMaxLength(60).setAutocomplete(true);
+const areaCommand = (name: AreaName, description: string) => (c: SlashCommandBuilder) =>
+  c.setName(`${ROOT_COMMAND}-${name}`).setDescription(description).addStringOption(actionOption(AREAS[name]));
 
-const schedaCommand = (c: SlashCommandBuilder) =>
-  c
-    .setName(`${ROOT_COMMAND}-scheda`)
-    .setDescription('Gestisci le schede dei tuoi personaggi')
-    .addStringOption(actionOption(AREAS.scheda))
-    .addStringOption(nomeOption('Personaggio o tratto (per crea e tratto-aggiungi scrivi il nome nuovo)'))
-    .addStringOption((o) => o.setName('groove').setDescription('Il Groove del personaggio').addChoices(...grooveChoices))
-    .addStringOption((o) => o.setName('concept').setDescription('Es. «Ex Mafioso», «Samurai Spaziale»').setMaxLength(100))
-    .addStringOption((o) => o.setName('ricordo').setDescription('La frase sul passato che lo perseguita').setMaxLength(200))
-    .addStringOption((o) =>
-      o
-        .setName('approccio')
-        .setDescription('Esagono in cui scrivere il tratto')
-        .addChoices(...approachChoices, { name: 'MONO (nave personale)', value: 'MONO' }),
-    )
-    .addIntegerOption((o) =>
-      o
-        .setName('stato')
-        .setDescription('Stato del tratto')
-        .addChoices({ name: 'Integro', value: 0 }, { name: 'Ferito', value: 1 }, { name: 'Ferito gravemente', value: 2 }),
-    )
-    .addIntegerOption((o) => o.setName('valore').setDescription('Cartucce o Ritmo, da 0 a 6').setMinValue(0).setMaxValue(6))
-    .addStringOption((o) => o.setName('titolo').setDescription('Titolo della Session (Fardello)').setMaxLength(100))
-    .addBooleanOption((o) => o.setName('risolto').setDescription('Fardello: segna la X'));
-
-const partitaCommand = (c: SlashCommandBuilder) =>
-  c
-    .setName(`${ROOT_COMMAND}-partita`)
-    .setDescription('Stato della partita in questo canale')
-    .addStringOption(actionOption(AREAS.partita))
-    .addStringOption((o) =>
-      o
-        .setName('tipo')
-        .setDescription('Tipo di Session')
-        .addChoices(...SESSION_TYPES.map((t) => ({ name: SESSION_LABELS[t], value: t }))),
-    )
-    .addStringOption((o) => o.setName('titolo').setDescription('Titolo della Session').setMaxLength(100))
-    .addStringOption((o) =>
-      o
-        .setName('esito')
-        .setDescription("Com'è finita la svolta Let's Jam!")
-        .addChoices({ name: 'Positiva', value: 'positiva' }, { name: 'Negativa', value: 'negativa' }),
-    )
-    .addIntegerOption((o) =>
-      o
-        .setName('numero')
-        .setDescription('Svolta')
-        .addChoices({ name: '1 · G.E.S.T.', value: 1 }, { name: '2 · 3, 2, 1…', value: 2 }, { name: "3 · Let's Jam!", value: 3 }),
-    )
-    .addStringOption((o) =>
-      o
-        .setName('approccio')
-        .setDescription('Genere della Session, o Approccio degli orologi della svolta')
-        .addChoices(...approachChoices, { name: 'Nessuno', value: 'nessuno' }),
-    )
-    .addStringOption((o) => o.setName('obiettivo').setDescription('Svolta: crea un orologio obiettivo con questo nome').setMaxLength(60))
-    .addStringOption((o) => o.setName('minaccia').setDescription('Svolta: crea un orologio minaccia con questo nome').setMaxLength(60))
-    .addIntegerOption((o) =>
-      o
-        .setName('calibro')
-        .setDescription('Svolta: sezioni degli orologi creati (di default 4)')
-        .addChoices(...CLOCK_SIZES.map((n) => ({ name: `${n} sezioni`, value: n }))),
-    )
-    .addIntegerOption((o) => o.setName('variazione').setDescription('Difficoltà: es. -1 per un successo speso, +1 per uno shock'))
-    .addIntegerOption((o) => o.setName('valore').setDescription('Difficoltà (valore preciso) o shock minimo (1 o 2)').setMinValue(0));
-
-const orologioCommand = (c: SlashCommandBuilder) =>
-  c
-    .setName(`${ROOT_COMMAND}-orologio`)
-    .setDescription('Orologi della svolta: obiettivi, minacce, inseguimenti')
-    .addStringOption(actionOption(AREAS.orologio))
-    .addStringOption(nomeOption('Nome dell\'orologio (per crea scrivi il nome nuovo)'))
-    .addIntegerOption((o) =>
-      o
-        .setName('calibro')
-        .setDescription('Numero di sezioni')
-        .addChoices(...CLOCK_SIZES.map((n) => ({ name: `${n} sezioni`, value: n }))),
-    )
-    .addStringOption((o) =>
-      o.setName('approccio').setDescription("Approccio che chiude l'orologio").addChoices(...approachChoices),
-    )
-    .addStringOption((o) =>
-      o
-        .setName('tipo')
-        .setDescription('Obiettivo, minaccia, inseguimento o altro')
-        .addChoices(...CLOCK_KINDS.map((k) => ({ name: k, value: k }))),
-    )
-    .addIntegerOption((o) => o.setName('sezioni').setDescription('Segna: quante sezioni (di default 1)').setMinValue(1).setMaxValue(8));
-
-const rischioCommand = (c: SlashCommandBuilder) =>
-  c
-    .setName(`${ROOT_COMMAND}-rischio`)
-    .setDescription('Il Rischio del Big Shot')
-    .addStringOption(actionOption(AREAS.rischio))
-    .addIntegerOption((o) => o.setName('quantita').setDescription('Difficoltà: Rischio da spendere').setMinValue(1).setMaxValue(10))
-    .addUserOption((o) => o.setName('giocatore').setDescription('Svantaggio: solo per la prossima Prova di questo giocatore'))
-    .addIntegerOption((o) => o.setName('valore').setDescription('Imposta: nuovo valore del Rischio').setMinValue(0).setMaxValue(99));
+const schedaCommand = areaCommand('scheda', 'Gestisci le schede dei tuoi personaggi');
+const partitaCommand = areaCommand('partita', 'Stato della partita in questo canale');
+const orologioCommand = areaCommand('orologio', 'Orologi della svolta: obiettivi, minacce, inseguimenti');
+const rischioCommand = areaCommand('rischio', 'Il Rischio del Big Shot');
 
 /**
  * Un comando di primo livello per area, con un campo `azione` che elenca tutto
  * quello che si può fare:
  * - /cowbot-prova
- * - /cowbot-scheda azione:...
- * - /cowbot-partita azione:...
- * - /cowbot-orologio azione:...
- * - /cowbot-rischio azione:...
+ * - /cowbot-scheda, /cowbot-partita, /cowbot-orologio, /cowbot-rischio: scegli l'azione
+ *   e il bot apre un form con i soli campi che servono (src/commands/forms.ts)
  */
 export const allCommands = [
   provaCommand(new SlashCommandBuilder()),

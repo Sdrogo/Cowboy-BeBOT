@@ -1,4 +1,5 @@
-import type { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
+import type { ChatInputCommandInteraction } from 'discord.js';
+import type { Args } from './args.js';
 import { MAX_CARTRIDGES, MAX_RITMO } from '../engine/rules.js';
 
 /**
@@ -62,20 +63,14 @@ export function actionOf(i: ChatInputCommandInteraction): string {
   return i.options.getString('azione', true);
 }
 
-/** Come actionOf, ma per l'autocompletamento: il campo può non essere ancora compilato. */
-export function actionOfAutocomplete(i: AutocompleteInteraction): string | null {
-  return i.options.getString('azione');
-}
-
-/** Messaggio d'errore se mancano opzioni o sono fuori intervallo; altrimenti null. */
-export function checkAction(i: ChatInputCommandInteraction, area: AreaName): string | null {
-  const id = actionOf(i);
+/** Messaggio d'errore se mancano valori o sono fuori intervallo; altrimenti null. */
+export function checkArgs(args: Args, area: AreaName, id: string): string | null {
   const spec = (AREAS[area] as readonly ActionSpec[]).find((a) => a.id === id);
   if (!spec) return 'Azione sconosciuta.';
-  const missing = (spec.required ?? []).filter((name) => i.options.get(name) === null);
+  const missing = (spec.required ?? []).filter((name) => !args.has(name));
   if (missing.length) return `Per «${id}» manca: ${missing.map((m) => `**${m}**`).join(', ')}.`;
   for (const [name, [min, max]] of Object.entries(spec.ranges ?? {})) {
-    const v = i.options.getInteger(name);
+    const v = args.int(name);
     if (v !== null && (v < min || v > max)) return `Per «${id}» **${name}** va da ${min} a ${max}.`;
   }
   return null;
