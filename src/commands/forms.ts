@@ -69,7 +69,7 @@ export function formFor(area: AreaName, action: string, ctx: Context, userId: st
     case 'scheda:mostra':
     case 'scheda:elimina': {
       const list = ctx.characters.list(userId).slice(0, 25);
-      if (!list.length) return 'Non hai personaggi: creane uno con `/cowbot-scheda azione:crea`.';
+      if (!list.length) return 'Non hai personaggi: creane uno con `/cowbot scheda azione:crea`.';
       return [select('nome', 'Personaggio', list.map((c) => ({ label: c.name, value: c.name })), { required: action !== 'mostra' })];
     }
     case 'scheda:modifica':
@@ -125,10 +125,9 @@ export function formFor(area: AreaName, action: string, ctx: Context, userId: st
       return [select('esito', "Com'è finita la svolta Let's Jam!", [{ label: 'Positiva', value: 'positiva' }, { label: 'Negativa', value: 'negativa' }], { required: true })];
     case 'partita:svolta':
       return [
-        select('numero', 'Svolta', [{ label: '1 · G.E.S.T.', value: '1' }, { label: '2 · 3, 2, 1…', value: '2' }, { label: "3 · Let's Jam!", value: '3' }], { required: true, as: 'int' }),
         text('obiettivo', 'Orologio obiettivo (nome)', { maxLength: 60, placeholder: 'Lascia vuoto per non crearlo' }),
         text('minaccia', 'Orologio minaccia (nome)', { maxLength: 60, placeholder: 'Lascia vuoto per non crearla' }),
-        select('calibro', 'Sezioni degli orologi (default 4)', CLOCK_SIZES.map((n) => ({ label: `${n} sezioni`, value: String(n) })), { as: 'int' }),
+        select('calibro', 'Sezioni degli orologi (default: 4, 6, 8 per svolta)', CLOCK_SIZES.map((n) => ({ label: `${n} sezioni`, value: String(n) })), { as: 'int' }),
         select('approccio', 'Approccio degli orologi (default il Genere)', approaches),
       ];
     case 'partita:difficolta':

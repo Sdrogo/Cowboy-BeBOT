@@ -14,7 +14,7 @@ function spend(g: Game, userId: string, amount: number): Game {
 
 function startOfTurn(g: Game, what: string): void {
   if (g.provasInTurn > 0) {
-    throw new SheetError(`${what} si fa solo a inizio svolta, prima della prima Prova (p. 35). Apri una nuova svolta con /cowbot-partita azione:svolta.`);
+    throw new SheetError(`${what} si fa solo a inizio svolta, prima della prima Prova (p. 35). Apri una nuova svolta con /cowbot partita azione:svolta.`);
   }
 }
 
@@ -39,7 +39,7 @@ export async function handleRischio(i: Interactive, ctx: Context, sub: string, a
         await i.reply({
           content:
             '**Inseguimento!** Il Big Shot spende 1 Rischio. Finché la svolta dura, ogni Prova con 0 successi viene ' +
-            'Spinta da sola finché non ne ottiene almeno uno (p. 36). Aprite un orologio inseguimento con /cowbot-orologio azione:crea.',
+            'Spinta da sola finché non ne ottiene almeno uno (p. 36). Aprite un orologio inseguimento con /cowbot orologio azione:crea.',
           embeds: [gameEmbed(next)],
         });
         return;

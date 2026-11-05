@@ -30,7 +30,7 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
   const character = ctx.characters.active(i.user.id);
   if (!character) {
     await i.reply({
-      content: 'Non hai ancora un personaggio attivo. Creane uno con `/cowbot-scheda azione:crea`.',
+      content: 'Non hai ancora un personaggio attivo. Creane uno con `/cowbot scheda azione:crea`.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -209,20 +209,18 @@ function spendRows(p: PendingProva, game: Game, clocks: Clock[]): Row[] {
         .setLabel('Shock → Rischio')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(s.shocks === 0 || s.noConvert),
-      new ButtonBuilder()
-        .setCustomId(cid(p, 'r1'))
-        .setLabel(`Rischio: +1 shock (${game.rischio})`)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(game.rischio < 1),
-      ...(turn >= 2
-        ? [
-            new ButtonBuilder()
-              .setCustomId(cid(p, 'r2'))
-              .setLabel('Rischio: +2 shock')
-              .setStyle(ButtonStyle.Secondary)
-              .setDisabled(game.rischio < 1 || s.converted > 0),
-          ]
-        : []),
+      // Svolta 1: 1 Rischio per +1 shock; dalla svolta 2 il Rischio vale +2 shock (p. 34).
+      turn >= 2
+        ? new ButtonBuilder()
+            .setCustomId(cid(p, 'r2'))
+            .setLabel(`Rischio: +2 shock (${game.rischio})`)
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(game.rischio < 1 || s.converted > 0)
+        : new ButtonBuilder()
+            .setCustomId(cid(p, 'r1'))
+            .setLabel(`Rischio: +1 shock (${game.rischio})`)
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(game.rischio < 1),
     ),
   );
   return rows;
@@ -371,6 +369,7 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
       case 'r2': {
         if (game.rischio < 1) break;
         const two = action === 'r2';
+        if (!two && p.result.input.turn >= 2) break;
         if (two && (p.result.input.turn < 2 || s.converted > 0)) break;
         const g = ctx.games.save({ ...game, rischio: game.rischio - 1 });
         s.shocks += two ? 2 : 1;
@@ -424,9 +423,21 @@ export async function autocompleteProva(i: AutocompleteInteraction, ctx: Context
   const approach = i.options.getString('approccio');
   const slots = approach && isApproach(approach) ? [...usableTraitSlots(approach, c.groove), 'MONO'] : null;
   const typed = i.options.getFocused().toLocaleLowerCase('it');
+  const disadvantage = i.options.getBoolean('svantaggio') ?? false;
+  const focusedName = i.options.getFocused(true).name;
+  // Tratti già scelti negli altri campi: ognuno vale una sola volta per Prova.
+  const taken = new Set(
+    ['tratto1', 'tratto2', 'tratto3']
+      .filter((n) => n !== focusedName)
+      .map((n) => i.options.getString(n))
+      .filter((v): v is string => Boolean(v && v.trim()))
+      .map((v) => findTrait(c, v)?.name),
+  );
   const choices = c.traits
     .filter((t) => (slots ? slots.includes(t.slot) : true))
-    .filter((t) => t.wound === 0 || c.groove === 'testa-dura')
+    .filter((t) => !taken.has(t.name))
+    // Ferito: inutilizzabile; grave: mai; Testa Dura solo con Svantaggio.
+    .filter((t) => t.wound === 0 || (t.wound === 1 && c.groove === 'testa-dura' && disadvantage))
     .filter((t) => t.name.toLocaleLowerCase('it').includes(typed))
     .slice(0, 25)
     .map((t) => ({ name: `${t.name} · ${t.slot}${t.wound ? ' (ferito)' : ''}`, value: t.name }));

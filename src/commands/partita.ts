@@ -9,6 +9,7 @@ import {
 } from 'discord.js';
 import { MAX_RITMO, TURNS, isApproach, type Approach, type TurnNumber } from '../engine/rules.js';
 import {
+  CLOCK_SIZES,
   SESSION_LABELS,
   clampRitmo,
   genreChosenByPlayers,
@@ -109,14 +110,14 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
   const channelId = i.channelId;
   const g = ctx.games.get(channelId);
   const ephemeral = (content: string) => i.reply({ content, flags: MessageFlags.Ephemeral });
-  if (!g.sessionType) return void (await ephemeral('Nessuna Session in corso: avviala con /cowbot-partita azione:sessione.'));
+  if (!g.sessionType) return void (await ephemeral('Nessuna Session in corso: avviala con /cowbot partita azione:sessione.'));
   const isBigShot = !g.bigShotId || g.bigShotId === i.user.id;
 
   switch (action) {
     case 'join': {
       if (g.bigShotId === i.user.id) return void (await ephemeral('Sei il Big Shot: i CT sono gli altri giocatori.'));
       const c = ctx.characters.active(i.user.id);
-      if (!c) return void (await ephemeral('Ti serve un personaggio attivo: creane uno con /cowbot-scheda azione:crea.'));
+      if (!c) return void (await ephemeral('Ti serve un personaggio attivo: creane uno con /cowbot scheda azione:crea.'));
       const prev = ctx.games.players(channelId).find((p) => p.userId === i.user.id);
       // Nella Classica il Ritmo si tira una volta sola: chi si riunisce tiene il suo tiro.
       const roll = g.sessionType === 'classica' ? (prev?.roll ?? 1 + Math.floor(Math.random() * 6)) : null;
@@ -189,7 +190,9 @@ export async function handlePartita(i: Interactive, ctx: Context, sub: string, a
       await i.reply({ embeds: [gameEmbed(g)] });
       return;
     case 'svolta': {
-      const n = a.reqInt('numero') as TurnNumber;
+      // Le svolte si susseguono: G.E.S.T. → 3, 2, 1… → Let's Jam! (p. 34).
+      if (g.turn >= 3) return void (await i.reply({ content: "Let's Jam! è l'ultima svolta: chiudi la Session con /cowbot partita azione:fine.", flags: MessageFlags.Ephemeral }));
+      const n = (g.turn + 1) as TurnNumber;
       // Orologi della nuova svolta (p. 23): un obiettivo e una minaccia, creati insieme alla svolta.
       const wanted = [
         { kind: 'obiettivo' as const, name: a.str('obiettivo') },
@@ -206,15 +209,14 @@ export async function handlePartita(i: Interactive, ctx: Context, sub: string, a
         if (wanted.length === 2 && wanted[0]!.name.trim().toLowerCase() === wanted[1]!.name.trim().toLowerCase()) {
           return void (await reply('Obiettivo e minaccia devono avere nomi diversi.'));
         }
-        const open = ctx.clocks.list(i.channelId, false);
-        const dup = wanted.find((c) => open.some((o) => o.name.toLowerCase() === c.name.trim().toLowerCase()));
-        if (dup) return void (await reply(`C'è già un orologio aperto chiamato «${dup.name.trim()}».`));
       }
+      // Gli orologi rimasti aperti dalla svolta precedente non accadono: si chiudono (si tolgono).
+      for (const old of ctx.clocks.list(i.channelId, false)) ctx.clocks.delete(old);
       const next = ctx.games.setTurn(i.channelId, n);
       const created = wanted.map((c) =>
         ctx.clocks.create(i.channelId, {
           name: c.name,
-          size: a.int('calibro') ?? 4,
+          size: a.int('calibro') ?? CLOCK_SIZES[n - 1]!,
           approach: approach as Approach,
           kind: c.kind,
         }),
