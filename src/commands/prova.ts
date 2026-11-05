@@ -28,7 +28,7 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
   const character = ctx.characters.active(i.user.id);
   if (!character) {
     await i.reply({
-      content: 'Non hai ancora un personaggio attivo. Creane uno con `/cowbot scheda crea`.',
+      content: 'Non hai ancora un personaggio attivo. Creane uno con `/cowbot-scheda crea`.',
       flags: MessageFlags.Ephemeral,
     });
     return;

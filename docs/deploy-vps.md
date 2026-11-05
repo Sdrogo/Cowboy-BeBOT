@@ -83,4 +83,5 @@ Attenzione: `docker compose down -v` cancella il volume e quindi tutte le schede
 - **`Manca DISCORD_TOKEN`** nei log: il file `.env` non c'è o è vuoto, oppure non sei nella cartella del progetto.
 - **`An invalid token was provided`**: il token è sbagliato o è stato rigenerato nel Developer Portal.
 - **I comandi non compaiono**: rilancia la registrazione; se sono globali aspetta fino a un'ora, oppure usa `DISCORD_GUILD_ID` per il tuo server.
+- **Vedo ancora il vecchio `/cowbot`**: la registrazione sostituisce tutti i comandi di quell'ambito (server o globale). Se prima li avevi registrati nell'altro ambito, svuota o imposta `DISCORD_GUILD_ID` come allora, rilancia la registrazione, poi cambia ambito e rilancia di nuovo.
 - **La build si interrompe su un VPS piccolo**: su ARM `better-sqlite3` viene compilato e serve memoria. Aggiungi 1 GB di swap (`sudo fallocate -l 1G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`) e riprova.

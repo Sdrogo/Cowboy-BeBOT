@@ -1,17 +1,16 @@
-import {
-  SlashCommandBuilder,
-  type SlashCommandSubcommandBuilder,
-  type SlashCommandSubcommandGroupBuilder,
-} from 'discord.js';
+import { SlashCommandBuilder } from 'discord.js';
 import { APPROACHES, GROOVES, GROOVE_IDS, MAX_CARTRIDGES, MAX_RITMO } from '../engine/rules.js';
 import { CLOCK_KINDS, CLOCK_SIZES, SESSION_LABELS, SESSION_TYPES } from '../engine/session.js';
+
+/** Prefisso comune dei comandi del bot. */
+export const ROOT_COMMAND = 'cowbot';
 
 const approachChoices = APPROACHES.map((a) => ({ name: a, value: a }));
 const grooveChoices = GROOVE_IDS.map((id) => ({ name: GROOVES[id].name, value: id }));
 
-const provaSubcommand = (s: SlashCommandSubcommandBuilder) =>
+const provaCommand = (s: SlashCommandBuilder) =>
   s
-  .setName('prova')
+  .setName(`${ROOT_COMMAND}-prova`)
   .setDescription('Tira una Prova con il tuo personaggio attivo')
   .addStringOption((o) =>
     o.setName('approccio').setDescription('Rock, Dance, Blues, Tango o Jazz').setRequired(true).addChoices(...approachChoices),
@@ -32,9 +31,9 @@ const provaSubcommand = (s: SlashCommandSubcommandBuilder) =>
     o.setName('modificatore').setDescription('Dadi in più o in meno (es. Groove della Taglia)').setMinValue(-10).setMaxValue(10),
   );
 
-const schedaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
+const schedaCommand = (g: SlashCommandBuilder) =>
   g
-  .setName('scheda')
+  .setName(`${ROOT_COMMAND}-scheda`)
   .setDescription('Gestisci le schede dei tuoi personaggi')
   .addSubcommand((s) =>
     s
@@ -124,9 +123,9 @@ const schedaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
       .addBooleanOption((o) => o.setName('risolto').setDescription('Segna la X accanto al Fardello')),
   );
 
-const partitaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
+const partitaCommand = (g: SlashCommandBuilder) =>
   g
-  .setName('partita')
+  .setName(`${ROOT_COMMAND}-partita`)
   .setDescription('Stato della partita in questo canale')
   .addSubcommand((s) =>
     s
@@ -189,9 +188,9 @@ const partitaGroup = (g: SlashCommandSubcommandGroupBuilder) =>
       .addIntegerOption((o) => o.setName('valore').setDescription('1 o 2').setRequired(true).setMinValue(1).setMaxValue(2)),
   );
 
-const orologioGroup = (g: SlashCommandSubcommandGroupBuilder) =>
+const orologioCommand = (g: SlashCommandBuilder) =>
   g
-  .setName('orologio')
+  .setName(`${ROOT_COMMAND}-orologio`)
   .setDescription('Orologi della svolta: obiettivi, minacce, inseguimenti')
   .addSubcommand((s) => s.setName('lista').setDescription('Mostra gli orologi aperti nel canale'))
   .addSubcommand((s) =>
@@ -231,9 +230,9 @@ const orologioGroup = (g: SlashCommandSubcommandGroupBuilder) =>
       .addStringOption((o) => o.setName('nome').setDescription('Orologio').setRequired(true).setAutocomplete(true)),
   );
 
-const rischioGroup = (g: SlashCommandSubcommandGroupBuilder) =>
+const rischioCommand = (g: SlashCommandBuilder) =>
   g
-  .setName('rischio')
+  .setName(`${ROOT_COMMAND}-rischio`)
   .setDescription('Il Rischio del Big Shot')
   .addSubcommand((s) =>
     s
@@ -255,24 +254,19 @@ const rischioGroup = (g: SlashCommandSubcommandGroupBuilder) =>
       .addIntegerOption((o) => o.setName('valore').setDescription('Nuovo valore').setRequired(true).setMinValue(0).setMaxValue(99)),
   );
 
-/** Nome dell'unico slash command del bot: tutto il resto sono sottocomandi. */
-export const ROOT_COMMAND = 'cowbot';
-
 /**
- * Un solo comando, /cowbot, con:
- * - /cowbot prova
- * - /cowbot scheda <azione>
- * - /cowbot partita <azione>
- * - /cowbot orologio <azione>
- * - /cowbot rischio <azione>
+ * Un comando di primo livello per area, così Discord mostra i sotto-comandi
+ * solo dopo aver scelto l'area:
+ * - /cowbot-prova
+ * - /cowbot-scheda <azione>
+ * - /cowbot-partita <azione>
+ * - /cowbot-orologio <azione>
+ * - /cowbot-rischio <azione>
  */
-export const cowbotCommand = new SlashCommandBuilder()
-  .setName(ROOT_COMMAND)
-  .setDescription('Cowboy Bebop - Il Gioco di Ruolo: Prove, schede, orologi e Rischio')
-  .addSubcommand(provaSubcommand)
-  .addSubcommandGroup(schedaGroup)
-  .addSubcommandGroup(partitaGroup)
-  .addSubcommandGroup(orologioGroup)
-  .addSubcommandGroup(rischioGroup);
-
-export const allCommands = [cowbotCommand];
+export const allCommands = [
+  provaCommand(new SlashCommandBuilder()),
+  schedaCommand(new SlashCommandBuilder()),
+  partitaCommand(new SlashCommandBuilder()),
+  orologioCommand(new SlashCommandBuilder()),
+  rischioCommand(new SlashCommandBuilder()),
+];

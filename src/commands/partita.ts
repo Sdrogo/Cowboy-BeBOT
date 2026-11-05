@@ -108,14 +108,14 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
   const channelId = i.channelId;
   const g = ctx.games.get(channelId);
   const ephemeral = (content: string) => i.reply({ content, flags: MessageFlags.Ephemeral });
-  if (!g.sessionType) return void (await ephemeral('Nessuna Session in corso: avviala con /cowbot partita sessione.'));
+  if (!g.sessionType) return void (await ephemeral('Nessuna Session in corso: avviala con /cowbot-partita sessione.'));
   const isBigShot = !g.bigShotId || g.bigShotId === i.user.id;
 
   switch (action) {
     case 'join': {
       if (g.bigShotId === i.user.id) return void (await ephemeral('Sei il Big Shot: i CT sono gli altri giocatori.'));
       const c = ctx.characters.active(i.user.id);
-      if (!c) return void (await ephemeral('Ti serve un personaggio attivo: creane uno con /cowbot scheda crea.'));
+      if (!c) return void (await ephemeral('Ti serve un personaggio attivo: creane uno con /cowbot-scheda crea.'));
       const prev = ctx.games.players(channelId).find((p) => p.userId === i.user.id);
       // Nella Classica il Ritmo si tira una volta sola: chi si riunisce tiene il suo tiro.
       const roll = g.sessionType === 'classica' ? (prev?.roll ?? 1 + Math.floor(Math.random() * 6)) : null;
