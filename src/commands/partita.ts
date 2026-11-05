@@ -124,7 +124,8 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
       ctx.games.setPlayer(channelId, { userId: i.user.id, characterId: c.id, roll, ritmo });
       ctx.characters.save(setRitmo(c, ritmo));
       recomputeRischio(ctx, channelId);
-      await i.update(await sessionView(ctx, channelId, true));
+      await i.deferUpdate();
+      await i.editReply(await sessionView(ctx, channelId, true));
       return;
     }
     case 'buy': {
@@ -136,13 +137,15 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
       const c = ctx.characters.byId(me.characterId);
       if (c) ctx.characters.save(setRitmo(c, me.ritmo + 1));
       recomputeRischio(ctx, channelId);
-      await i.update(await sessionView(ctx, channelId, true));
+      await i.deferUpdate();
+      await i.editReply(await sessionView(ctx, channelId, true));
       return;
     }
     case 'start': {
       if (!isBigShot) return void (await ephemeral('La prima svolta la apre il Big Shot.'));
       const next = ctx.games.save(enterTurn(ctx.games.get(channelId), 1));
-      await i.update(await sessionView(ctx, channelId, false));
+      await i.deferUpdate();
+      await i.editReply(await sessionView(ctx, channelId, false));
       await i.followUp({ embeds: [gameEmbed(next, `Si apre la svolta 1: ${TURNS[1].name}`)] });
       return;
     }

@@ -100,7 +100,9 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     tags,
   });
 
-  await i.reply(await provaMessage(ctx, pending, updated, null));
+  // La card si disegna in qualche centinaio di millisecondi (di più su un VPS piccolo): Discord vuole una risposta entro 3 secondi.
+  await i.deferReply();
+  await i.editReply(await provaMessage(ctx, pending, updated, null));
 }
 
 // --- Messaggio ---
@@ -286,6 +288,8 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
     return;
   }
 
+  // Disegnare la card può richiedere tempo: si conferma subito il clic e si aggiorna il messaggio dopo.
+  await i.deferUpdate();
   try {
     let extra: AttachmentBuilder | null = null;
     let done = false;
@@ -377,10 +381,10 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
       default:
         return;
     }
-    await i.update(await provaMessage(ctx, p, c, extra, done));
+    await i.editReply(await provaMessage(ctx, p, c, extra, done));
   } catch (err) {
     if (err instanceof SheetError) {
-      await i.reply({ content: err.message, flags: MessageFlags.Ephemeral });
+      await i.followUp({ content: err.message, flags: MessageFlags.Ephemeral });
       return;
     }
     throw err;

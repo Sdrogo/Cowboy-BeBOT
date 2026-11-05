@@ -7,6 +7,7 @@ import { FORM_PREFIX } from './commands/forms.js';
 import { SESSION_PREFIX, handleSessionComponent } from './commands/partita.js';
 import { END_PREFIX, handleEndComponent } from './commands/fine.js';
 import { PROVA_PREFIX, autocompleteProva, handleProva, handleProvaComponent } from './commands/prova.js';
+import { warmUpRenderer } from './render/satori.js';
 import { openDatabase } from './store/db.js';
 
 const token = process.env.DISCORD_TOKEN;
@@ -19,7 +20,10 @@ const db = openDatabase(process.env.DATABASE_PATH ?? 'data/cowboy-bebot.sqlite')
 const ctx = createContext(db);
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once(Events.ClientReady, (c) => console.log(`Cowboy BeBOT in linea come ${c.user.tag}`));
+client.once(Events.ClientReady, (c) => {
+  console.log(`Cowboy BeBOT in linea come ${c.user.tag}`);
+  warmUpRenderer().catch((err) => console.warn('Avvio del disegno non riuscito:', err));
+});
 client.on(Events.InteractionCreate, (i) => {
   route(i, ctx).catch(async (err) => {
     console.error(err);
