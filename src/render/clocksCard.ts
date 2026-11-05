@@ -1,6 +1,6 @@
 import type { Clock } from '../engine/session.js';
 import { div, el, renderPng, svg, type Node } from './satori.js';
-import { APPROACH_COLORS, INK, LINE, LINE_STRONG, MUTED, PAPER } from './theme.js';
+import { INK, LINE, LINE_STRONG, MUTED, NEGATIVE_CLOCK_COLORS, PAPER, POSITIVE_CLOCK_COLORS } from './theme.js';
 
 export const CLOCKS_CARD_WIDTH = 640;
 
@@ -13,10 +13,24 @@ const KIND_LABEL: Record<Clock['kind'], string> = {
 
 const mono = (size: number, color: string) => ({ fontFamily: 'Plex Mono', fontSize: size, fontWeight: 600, letterSpacing: 1.5, color });
 
+/**
+ * Colore di ogni orologio: rosso per le minacce, verde per tutti gli altri.
+ * La tonalità cambia con la posizione tra gli orologi della stessa polarità.
+ */
+export function clockTints(clocks: Clock[]): Map<number, string> {
+  let pos = 0;
+  let neg = 0;
+  const out = new Map<number, string>();
+  for (const c of clocks) {
+    if (c.kind === 'minaccia') out.set(c.id, NEGATIVE_CLOCK_COLORS[neg++ % NEGATIVE_CLOCK_COLORS.length]!);
+    else out.set(c.id, POSITIVE_CLOCK_COLORS[pos++ % POSITIVE_CLOCK_COLORS.length]!);
+  }
+  return out;
+}
+
 /** Torta divisa in `size` sezioni: segnate in colore, l'ultima segnata evidenziata. */
-export function clockPie(clock: Clock, diameter: number, highlightLast = false): Node {
+export function clockPie(clock: Clock, color: string, diameter: number, highlightLast = false): Node {
   const r = 46;
-  const color = clock.kind === 'minaccia' ? PAPER : APPROACH_COLORS[clock.approach];
   const paths: Node[] = [];
   for (let k = 0; k < clock.size; k++) {
     const a0 = ((-90 + (k * 360) / clock.size) * Math.PI) / 180;
@@ -24,14 +38,13 @@ export function clockPie(clock: Clock, diameter: number, highlightLast = false):
     const p = (a: number) => `${(50 + r * Math.cos(a)).toFixed(2)} ${(50 + r * Math.sin(a)).toFixed(2)}`;
     let fill = LINE;
     if (k < clock.marks) fill = color;
-    if (highlightLast && k === clock.marks - 1) fill = clock.kind === 'minaccia' ? '#E8553A' : PAPER;
+    if (highlightLast && k === clock.marks - 1) fill = PAPER;
     paths.push(el('path', { d: `M50 50 L${p(a0)} A${r} ${r} 0 0 1 ${p(a1)} Z`, fill, stroke: INK, strokeWidth: 3 }));
   }
   return svg({ width: diameter, height: diameter, viewBox: '0 0 100 100' }, ...paths);
 }
 
-function clockTile(clock: Clock, highlightId: number | null): Node {
-  const color = APPROACH_COLORS[clock.approach];
+function clockTile(clock: Clock, color: string, highlightId: number | null): Node {
   return div(
     {
       width: 186,
@@ -44,8 +57,8 @@ function clockTile(clock: Clock, highlightId: number | null): Node {
       border: `2px solid ${clock.closed ? color : LINE_STRONG}`,
       opacity: clock.closed && clock.id !== highlightId ? 0.55 : 1,
     },
-    clockPie(clock, 104, clock.id === highlightId),
-    div(mono(11, clock.kind === 'minaccia' ? PAPER : color), `${KIND_LABEL[clock.kind]} · ${clock.approach.toUpperCase()}`),
+    clockPie(clock, color, 104, clock.id === highlightId),
+    div(mono(11, color), `${KIND_LABEL[clock.kind]} · ${clock.approach.toUpperCase()}`),
     div({ fontFamily: 'Bebas Neue', fontSize: 24, lineHeight: 1, color: PAPER, textAlign: 'center', justifyContent: 'center' }, clock.name),
     div(mono(12, clock.closed ? color : MUTED), clock.closed ? 'CHIUSO' : `${clock.marks} / ${clock.size}`),
   );
@@ -62,6 +75,7 @@ export interface ClocksCardData {
 }
 
 export function clocksCardTree(d: ClocksCardData): Node {
+  const tints = clockTints(d.clocks);
   return div(
     { width: CLOCKS_CARD_WIDTH, flexDirection: 'column', backgroundColor: INK, borderRadius: 12, overflow: 'hidden' },
     div(
@@ -70,7 +84,7 @@ export function clocksCardTree(d: ClocksCardData): Node {
       div({ fontFamily: 'Bebas Neue', fontSize: 44, lineHeight: 1, color: PAPER }, d.title),
     ),
     d.clocks.length
-      ? div({ padding: '18px 22px', gap: 12, flexWrap: 'wrap' }, ...d.clocks.map((c) => clockTile(c, d.highlightId ?? null)))
+      ? div({ padding: '18px 22px', gap: 12, flexWrap: 'wrap' }, ...d.clocks.map((c) => clockTile(c, tints.get(c.id)!, d.highlightId ?? null)))
       : div({ padding: '22px', fontFamily: 'Plex Sans', fontSize: 15, color: MUTED }, 'Nessun orologio aperto in questo canale.'),
     d.note
       ? div(
