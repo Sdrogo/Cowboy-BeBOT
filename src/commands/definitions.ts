@@ -138,7 +138,10 @@ const partitaCommand = (g: SlashCommandBuilder) =>
           .setRequired(true)
           .addChoices(...SESSION_TYPES.map((t) => ({ name: SESSION_LABELS[t], value: t }))),
       )
-      .addStringOption((o) => o.setName('titolo').setDescription('Titolo della Session').setMaxLength(100)),
+      .addStringOption((o) => o.setName('titolo').setDescription('Titolo della Session').setMaxLength(100))
+      .addStringOption((o) =>
+        o.setName('genere').setDescription('Genere della Session (si può cambiare dopo con genere)').addChoices(...approachChoices),
+      ),
   )
   .addSubcommand((s) =>
     s

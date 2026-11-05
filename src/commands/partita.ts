@@ -158,11 +158,19 @@ export async function handlePartita(i: ChatInputCommandInteraction, ctx: Context
       ctx.games.clearPlayers(i.channelId);
       ctx.clocks.clear(i.channelId);
       const fresh = newGame(i.channelId);
-      ctx.games.save({ ...fresh, sessionType: type, title: i.options.getString('titolo') ?? '', bigShotId: i.user.id });
+      const genre = i.options.getString('genere');
+      ctx.games.save({
+        ...fresh,
+        sessionType: type,
+        title: i.options.getString('titolo') ?? '',
+        bigShotId: i.user.id,
+        genre: genre && isApproach(genre) ? genre : null,
+      });
       recomputeRischio(ctx, i.channelId);
       await i.reply({
         content:
           `${i.user} fa da **Big Shot** per questa ${SESSION_LABELS[type]}. ` +
+          (genre && isApproach(genre) ? `Genere: **${genre}**. ` : '') +
           'Cacciatori, premete «Mi unisco» con il personaggio attivo: il bot calcola Ritmo e Rischio.',
         ...(await sessionView(ctx, i.channelId, true)),
       });
