@@ -1,14 +1,12 @@
 import 'dotenv/config';
 import { Client, Events, GatewayIntentBits, MessageFlags, type Interaction } from 'discord.js';
 import { createContext, type Context } from './context.js';
-import { checkAction } from './commands/actions.js';
 import { ROOT_COMMAND } from './commands/definitions.js';
+import { isArea, startAction, submitForm } from './commands/dispatch.js';
+import { FORM_PREFIX } from './commands/forms.js';
+import { SESSION_PREFIX, handleSessionComponent } from './commands/partita.js';
 import { END_PREFIX, handleEndComponent } from './commands/fine.js';
-import { autocompleteOrologio, handleOrologio } from './commands/orologio.js';
-import { SESSION_PREFIX, handlePartita, handleSessionComponent } from './commands/partita.js';
 import { PROVA_PREFIX, autocompleteProva, handleProva, handleProvaComponent } from './commands/prova.js';
-import { handleRischio } from './commands/rischio.js';
-import { autocompleteScheda, handleScheda } from './commands/scheda.js';
 import { openDatabase } from './store/db.js';
 
 const token = process.env.DISCORD_TOKEN;
@@ -33,26 +31,18 @@ client.on(Events.InteractionCreate, (i) => {
 
 async function route(i: Interaction, ctx: Context): Promise<void> {
   if (i.isAutocomplete() || i.isChatInputCommand()) {
-    // /cowbot-prova, oppure /cowbot-<area> azione:<azione>.
+    // /cowbot-prova, oppure /cowbot-<area>: si sceglie l'azione e si compila il form.
     if (!i.commandName.startsWith(`${ROOT_COMMAND}-`)) return;
     const area = i.commandName.slice(ROOT_COMMAND.length + 1);
     if (i.isAutocomplete()) {
       if (area === 'prova') return autocompleteProva(i, ctx);
-      if (area === 'scheda') return autocompleteScheda(i, ctx);
-      if (area === 'orologio') return autocompleteOrologio(i, ctx);
       return;
     }
     if (area === 'prova') return handleProva(i, ctx);
-    if (area === 'scheda' || area === 'partita' || area === 'orologio' || area === 'rischio') {
-      const problem = checkAction(i, area);
-      if (problem) return void (await i.reply({ content: problem, flags: MessageFlags.Ephemeral }));
-    }
-    if (area === 'scheda') return handleScheda(i, ctx);
-    if (area === 'partita') return handlePartita(i, ctx);
-    if (area === 'orologio') return handleOrologio(i, ctx);
-    if (area === 'rischio') return handleRischio(i, ctx);
+    if (isArea(area)) return startAction(i, ctx, area);
     return;
   }
+  if (i.isModalSubmit() && i.customId.startsWith(`${FORM_PREFIX}:`)) return submitForm(i, ctx);
   if ((i.isButton() || i.isStringSelectMenu()) && i.customId.startsWith(`${PROVA_PREFIX}:`)) {
     return handleProvaComponent(i, ctx);
   }

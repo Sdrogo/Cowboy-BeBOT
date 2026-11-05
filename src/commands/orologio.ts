@@ -1,8 +1,8 @@
-import { AttachmentBuilder, MessageFlags, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
+import { AttachmentBuilder, MessageFlags } from 'discord.js';
 import { isApproach } from '../engine/rules.js';
 import { CLOCK_KINDS, threatOutcome, type Clock, type ClockKind, type MarkSource } from '../engine/session.js';
 import type { Context } from '../context.js';
-import { actionOf, actionOfAutocomplete } from './actions.js';
+import type { Args, Interactive } from './args.js';
 import { renderClocksCard } from '../render/clocksCard.js';
 import { SheetError } from '../store/characters.js';
 
@@ -56,8 +56,7 @@ export async function clocksAttachment(ctx: Context, channelId: string, highligh
   return new AttachmentBuilder(png, { name: 'orologi.png', description: alt || 'Nessun orologio' });
 }
 
-export async function handleOrologio(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
-  const sub = actionOf(i);
+export async function handleOrologio(i: Interactive, ctx: Context, sub: string, a: Args): Promise<void> {
   const channelId = i.channelId;
   const game = ctx.games.get(channelId);
   const isBigShot = !game.bigShotId || game.bigShotId === i.user.id;
@@ -69,12 +68,12 @@ export async function handleOrologio(i: ChatInputCommandInteraction, ctx: Contex
       }
       case 'crea': {
         if (!isBigShot) throw new SheetError('Gli orologi li crea il Big Shot: chiedi a lui di aprirlo (p. 23).');
-        const approach = i.options.getString('approccio', true);
-        const kind = i.options.getString('tipo', true) as ClockKind;
+        const approach = a.reqStr('approccio');
+        const kind = a.reqStr('tipo') as ClockKind;
         if (!isApproach(approach) || !(CLOCK_KINDS as readonly string[]).includes(kind)) throw new Error('Opzioni non valide');
         const clock = ctx.clocks.create(channelId, {
-          name: i.options.getString('nome', true),
-          size: i.options.getInteger('calibro', true),
+          name: a.reqStr('nome'),
+          size: a.reqInt('calibro'),
           approach,
           kind,
         });
@@ -86,8 +85,8 @@ export async function handleOrologio(i: ChatInputCommandInteraction, ctx: Contex
       }
       case 'segna': {
         if (!isBigShot) throw new SheetError('Fuori dalle Prove solo il Big Shot segna gli orologi a mano.');
-        const clock = findClock(ctx, channelId, i.options.getString('nome', true));
-        const times = i.options.getInteger('sezioni') ?? 1;
+        const clock = findClock(ctx, channelId, a.reqStr('nome'));
+        const times = a.int('sezioni') ?? 1;
         let result: MarkResult | null = null;
         const lines: string[] = [];
         for (let k = 0; k < times && !(result?.closed ?? false); k++) {
@@ -102,7 +101,7 @@ export async function handleOrologio(i: ChatInputCommandInteraction, ctx: Contex
       }
       case 'elimina': {
         if (!isBigShot) throw new SheetError('Solo il Big Shot elimina gli orologi.');
-        const clock = findClock(ctx, channelId, i.options.getString('nome', true));
+        const clock = findClock(ctx, channelId, a.reqStr('nome'));
         ctx.clocks.delete(clock);
         await i.reply(`Orologio **${clock.name}** eliminato.`);
         return;
@@ -121,18 +120,4 @@ function findClock(ctx: Context, channelId: string, name: string): Clock {
   const clock = ctx.clocks.byName(channelId, name);
   if (!clock) throw new SheetError(`Non c'è un orologio chiamato «${name}» in questo canale.`);
   return clock;
-}
-
-export async function autocompleteOrologio(i: AutocompleteInteraction, ctx: Context): Promise<void> {
-  const typed = i.options.getFocused().toLocaleLowerCase('it');
-  const action = actionOfAutocomplete(i);
-  if (action === 'crea') return void (await i.respond([]));
-  const open = action === 'segna';
-  await i.respond(
-    ctx.clocks
-      .list(i.channelId, !open)
-      .filter((c) => c.name.toLocaleLowerCase('it').includes(typed))
-      .slice(0, 25)
-      .map((c) => ({ name: `${c.name} · ${c.kind} ${c.approach} ${c.marks}/${c.size}`, value: c.name })),
-  );
 }
