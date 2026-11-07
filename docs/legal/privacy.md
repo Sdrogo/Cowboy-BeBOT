@@ -14,7 +14,7 @@ Il titolare è il team **Army of Me**, contattabile tramite il [canale Discord d
 
 ## 2. Quali dati raccogliamo
 
-Il Bot riceve da Discord solo le interazioni con i suoi comandi (`/prova`, `/scheda`, `/partita`) e con i suoi pulsanti. **Non legge i messaggi della chat**, non accede alla lista dei membri, ai messaggi privati, all'email, all'indirizzo IP o ad altri dati del tuo account Discord.
+Il Bot riceve da Discord solo le interazioni con i suoi comandi (`/cowbot prova`, `/cowbot scheda`, `/cowbot partita`, `/cowbot orologio`, `/cowbot rischio`) e con i suoi pulsanti. **Non legge i messaggi della chat**, non accede alla lista dei membri, ai messaggi privati, all'email, all'indirizzo IP o ad altri dati del tuo account Discord.
 
 Il Bot **conserva** nel suo database:
 
@@ -22,9 +22,11 @@ Il Bot **conserva** nel suo database:
 |---|---|---|
 | ID utente Discord | `123456789012345678` | le tue schede |
 | Schede dei personaggi: nome, concept, Groove, Ricordo, tratti e ferite, Cartucce, Ritmo, Fardelli, personaggio attivo, data di creazione | "Spike, cacciatore di taglie" | il tuo ID utente |
-| Stato della partita: svolta, Difficoltà, Genere, shock minimo, data di aggiornamento | svolta 2, Difficoltà 5 | l'ID del canale Discord |
+| Stato della partita: tipo e titolo della Session, ID utente del Big Shot, svolta, Difficoltà, Genere, shock minimo, Rischio, effetti in corso, data di aggiornamento | Session Classica, svolta 2, Difficoltà 5 | l'ID del canale Discord |
+| Partecipanti alla Session: ID utente, personaggio usato, tiro e valore del Ritmo | Ritmo 4 | l'ID del canale Discord |
+| Orologi: nome, sezioni, Approccio, tipo, sezioni segnate | "Fuga dal casinò", 2 su 4 | l'ID del canale Discord |
 
-Il Bot tiene inoltre **in memoria temporanea** (non su disco) i dati di un tiro appena fatto, per permetterti di usare i pulsanti della card. Questi dati vengono cancellati dopo un'ora o al riavvio del Bot.
+Il Bot tiene inoltre **in memoria temporanea** (non su disco) i dati di un tiro appena fatto, per permetterti di usare i pulsanti della card. Questi dati vengono cancellati dopo tre ore o al riavvio del Bot.
 
 I testi delle schede li scrivi tu: ti chiediamo di non inserirvi dati personali, tuoi o di altre persone.
 
@@ -45,16 +47,17 @@ Le interazioni passano anche attraverso Discord, che le tratta secondo la propri
 
 ## 5. Per quanto tempo
 
-- Le schede restano finché non le cancelli con `/scheda elimina` o non chiedi al titolare di cancellarle.
+- Le schede restano finché non le cancelli con `/cowbot scheda azione:elimina` o non chiedi al titolare di cancellarle.
 - Lo stato della partita di un canale resta finché il Bot è in uso nel server. Puoi chiederne la cancellazione al titolare.
-- I dati temporanei dei tiri durano al massimo un'ora.
+- I partecipanti e gli orologi di un canale vengono cancellati quando nello stesso canale inizia una nuova Session.
+- I dati temporanei dei tiri durano al massimo tre ore.
 - I log tecnici vengono conservati per il tempo strettamente necessario e poi eliminati.
 
 Se il Bot viene dismesso, il database viene cancellato.
 
 ## 6. I tuoi diritti
 
-Hai diritto di chiedere l'accesso ai tuoi dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e di opporti al trattamento basato sul legittimo interesse (artt. 15–22 GDPR). Molte di queste cose puoi farle da solo con `/scheda`. Per tutto il resto scrivi nel [canale Discord del team](https://discord.gg/Xe86XD6K96) indicando il tuo ID utente Discord: risponderemo entro un mese.
+Hai diritto di chiedere l'accesso ai tuoi dati, la rettifica, la cancellazione, la limitazione del trattamento, la portabilità e di opporti al trattamento basato sul legittimo interesse (artt. 15–22 GDPR). Molte di queste cose puoi farle da solo con `/cowbot scheda`. Per tutto il resto scrivi nel [canale Discord del team](https://discord.gg/Xe86XD6K96) indicando il tuo ID utente Discord: risponderemo entro un mese.
 
 Se ritieni che il trattamento violi il GDPR, puoi proporre reclamo al [Garante per la protezione dei dati personali](https://www.garanteprivacy.it) o all'autorità del tuo Paese.
 

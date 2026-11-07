@@ -14,7 +14,7 @@ The controller is the **Army of Me** team, reachable through the [team's Discord
 
 ## 2. What we collect
 
-The Bot only receives from Discord your interactions with its commands (`/prova`, `/scheda`, `/partita`) and its buttons. **It does not read chat messages**, and it does not access member lists, direct messages, your email, IP address or other Discord account data.
+The Bot only receives from Discord your interactions with its commands (`/cowbot prova`, `/cowbot scheda`, `/cowbot partita`, `/cowbot orologio`, `/cowbot rischio`) and its buttons. **It does not read chat messages**, and it does not access member lists, direct messages, your email, IP address or other Discord account data.
 
 The Bot **stores** in its database:
 
@@ -22,9 +22,11 @@ The Bot **stores** in its database:
 |---|---|---|
 | Discord user ID | `123456789012345678` | your sheets |
 | Character sheets: name, concept, Groove, Memory, traits and wounds, Cartridges, Rhythm, Burdens, active character, creation date | "Spike, bounty hunter" | your user ID |
-| Game state: turn, Difficulty, Genre, minimum shock, last update | turn 2, Difficulty 5 | the Discord channel ID |
+| Game state: Session type and title, Big Shot user ID, turn, Difficulty, Genre, minimum shock, Risk, active effects, last update | Classic Session, turn 2, Difficulty 5 | the Discord channel ID |
+| Session participants: user ID, character used, Rhythm roll and value | Rhythm 4 | the Discord channel ID |
+| Clocks: name, segments, Approach, type, marked segments | "Casino escape", 2 of 4 | the Discord channel ID |
 
-The Bot also keeps the data of a roll you just made **in temporary memory** (not on disk) so you can use the buttons on the roll card. This data is deleted after one hour or when the Bot restarts.
+The Bot also keeps the data of a roll you just made **in temporary memory** (not on disk) so you can use the buttons on the roll card. This data is deleted after three hours or when the Bot restarts.
 
 You write the sheet text yourself: please don't put personal data about you or anyone else in it.
 
@@ -45,16 +47,17 @@ Interactions also pass through Discord, which processes them under its own [Priv
 
 ## 5. How long we keep it
 
-- Sheets are kept until you delete them with `/scheda elimina` or ask the controller to delete them.
+- Sheets are kept until you delete them with `/cowbot scheda azione:elimina` or ask the controller to delete them.
 - A channel's game state is kept while the Bot is used in that server. You can ask the controller to delete it.
-- Temporary roll data lasts at most one hour.
+- A channel's participants and clocks are deleted when a new Session starts in that channel.
+- Temporary roll data lasts at most three hours.
 - Technical logs are kept only as long as necessary and then deleted.
 
 If the Bot is shut down, the database is deleted.
 
 ## 6. Your rights
 
-You have the right to access, rectify and erase your data, to restrict processing, to data portability, and to object to processing based on legitimate interest (Arts. 15–22 GDPR). You can do much of this yourself with `/scheda`. For anything else, write in the [team's Discord channel](https://discord.gg/Xe86XD6K96) with your Discord user ID: we will reply within one month.
+You have the right to access, rectify and erase your data, to restrict processing, to data portability, and to object to processing based on legitimate interest (Arts. 15–22 GDPR). You can do much of this yourself with `/cowbot scheda`. For anything else, write in the [team's Discord channel](https://discord.gg/Xe86XD6K96) with your Discord user ID: we will reply within one month.
 
 If you believe the processing breaches the GDPR, you can lodge a complaint with the Italian [Garante per la protezione dei dati personali](https://www.garanteprivacy.it) or with the authority in your country.
 

@@ -69,6 +69,7 @@ describe('tratti utilizzabili in una Prova', () => {
     const tough = { ...hurt, groove: 'testa-dura' as const };
     expect(checkTraitsForProva(tough, ['Glock'], 'Rock', true).ok).toHaveLength(1);
     expect(checkTraitsForProva(tough, ['Glock'], 'Rock', false).ok).toHaveLength(0);
+    expect(checkTraitsForProva(faye, ['Red Tail', 'red tail'], 'Blues', false).errors).toHaveLength(1);
   });
 
   it('massimo 3 tratti per esagono', () => {

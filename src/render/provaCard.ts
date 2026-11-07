@@ -1,6 +1,7 @@
 import type { Die, ProvaResult } from '../engine/prova.js';
 import { MAX_CARTRIDGES, TURNS } from '../engine/rules.js';
 import { div, el, renderPng, svg, type Child, type Node } from './satori.js';
+import { clocksCardTree, type ClocksCardData } from './clocksCard.js';
 import { APPROACH_COLORS, INK, LINE, LINE_STRONG, MUTED, PAPER } from './theme.js';
 
 export const CARD_WIDTH = 640;
@@ -11,6 +12,19 @@ export interface ProvaCardData {
   /** Cartucce segnate dopo questa Prova, per il riepilogo. */
   cartridges: number;
   confirmed: boolean;
+  /** Fase di spesa di successi e shock, dopo la conferma. */
+  spend?: SpendView | null;
+  /** Etichette in alto (es. INSEGUIMENTO, SVANTAGGIO DAL RISCHIO). */
+  tags?: string[];
+  /** Orologi appena segnati: si disegnano sotto la card, nella stessa immagine. */
+  clocks?: ClocksCardData | null;
+}
+
+export interface SpendView {
+  successes: number;
+  shocks: number;
+  log: string[];
+  done: boolean;
 }
 
 const PIPS: Record<number, number[]> = {
@@ -142,6 +156,14 @@ function header(data: ProvaCardData, accent: string): Node {
       div(
         { backgroundColor: PAPER, borderRadius: 999, padding: '2px 10px', fontFamily: 'Plex Sans', fontWeight: 600, fontSize: 13, color: INK },
         result.mode.toUpperCase(),
+      ),
+    );
+  }
+  for (const tag of data.tags ?? []) {
+    chips.push(
+      div(
+        { border: `1px solid ${accent}`, borderRadius: 999, padding: '2px 10px', fontFamily: 'Plex Sans', fontWeight: 600, fontSize: 13, color: accent },
+        tag,
       ),
     );
   }
@@ -295,9 +317,36 @@ export function provaCardTree(data: ProvaCardData): Node {
     meter(data.result, accent),
     outcome(data.result, accent),
     footer(data, accent),
+    data.spend ? spendPanel(data.spend, accent) : null,
+  );
+}
+
+function counter(label: string, value: number, bg: string, fg: string): Node {
+  return div(
+    { flex: 1, alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 10, backgroundColor: bg },
+    div(mono(11, fg), label),
+    div(display(34, fg), String(value)),
+  );
+}
+
+function spendPanel(s: SpendView, accent: string): Node {
+  return div(
+    { flexDirection: 'column', gap: 10, padding: '14px 22px 18px', borderTop: `1px solid ${LINE}` },
+    div(mono(11, MUTED), s.done ? 'SPESA CONCLUSA' : 'DA SPENDERE'),
+    s.done
+      ? null
+      : div({ gap: 12 }, counter('SUCCESSI · CT', s.successes, accent, INK), counter('SHOCK · BIG SHOT', s.shocks, PAPER, INK)),
+    ...s.log.map((line) => div({ fontFamily: 'Plex Sans', fontSize: 14, color: PAPER }, line)),
+    s.done && (s.successes > 0 || s.shocks > 0)
+      ? div({ fontFamily: 'Plex Sans', fontSize: 13, color: MUTED }, `Non spesi e persi: ${s.successes} successi, ${s.shocks} shock.`)
+      : null,
   );
 }
 
 export function renderProvaCard(data: ProvaCardData): Promise<Buffer> {
-  return renderPng(provaCardTree(data), CARD_WIDTH);
+  // Due immagini allegate Discord le affianca e le taglia: meglio una sola, con le card impilate.
+  const tree = data.clocks
+    ? div({ width: CARD_WIDTH, flexDirection: 'column', gap: 12 }, provaCardTree(data), clocksCardTree(data.clocks))
+    : provaCardTree(data);
+  return renderPng(tree, CARD_WIDTH);
 }

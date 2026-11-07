@@ -1,10 +1,14 @@
-import { SlashCommandBuilder } from 'discord.js';
-import { APPROACHES, GROOVES, GROOVE_IDS, MAX_CARTRIDGES, MAX_RITMO } from '../engine/rules.js';
+import { SlashCommandBuilder, type SlashCommandStringOption, type SlashCommandSubcommandBuilder } from 'discord.js';
+import { AREAS, type ActionSpec, type AreaName } from './actions.js';
+import { APPROACHES, MAX_CARTRIDGES } from '../engine/rules.js';
+
+/** Prefisso comune dei comandi del bot. */
+export const ROOT_COMMAND = 'cowbot';
 
 const approachChoices = APPROACHES.map((a) => ({ name: a, value: a }));
-const grooveChoices = GROOVE_IDS.map((id) => ({ name: GROOVES[id].name, value: id }));
 
-export const provaCommand = new SlashCommandBuilder()
+const provaCommand = (s: SlashCommandSubcommandBuilder) =>
+  s
   .setName('prova')
   .setDescription('Tira una Prova con il tuo personaggio attivo')
   .addStringOption((o) =>
@@ -26,133 +30,34 @@ export const provaCommand = new SlashCommandBuilder()
     o.setName('modificatore').setDescription('Dadi in più o in meno (es. Groove della Taglia)').setMinValue(-10).setMaxValue(10),
   );
 
-export const schedaCommand = new SlashCommandBuilder()
-  .setName('scheda')
-  .setDescription('Gestisci le schede dei tuoi personaggi')
-  .addSubcommand((s) =>
-    s
-      .setName('crea')
-      .setDescription('Crea un nuovo personaggio e rendilo attivo')
-      .addStringOption((o) => o.setName('nome').setDescription('Nome del personaggio').setRequired(true).setMaxLength(60))
-      .addStringOption((o) => o.setName('groove').setDescription('Il Groove del personaggio').addChoices(...grooveChoices))
-      .addStringOption((o) => o.setName('concept').setDescription('Es. «Ex Mafioso», «Samurai Spaziale»').setMaxLength(100))
-      .addStringOption((o) => o.setName('ricordo').setDescription('La frase sul passato che lo perseguita').setMaxLength(200)),
-  )
-  .addSubcommand((s) => s.setName('lista').setDescription('Elenca i tuoi personaggi'))
-  .addSubcommand((s) =>
-    s
-      .setName('usa')
-      .setDescription('Cambia personaggio attivo')
-      .addStringOption((o) => o.setName('nome').setDescription('Personaggio').setRequired(true).setAutocomplete(true)),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('mostra')
-      .setDescription('Mostra una scheda (di default quella attiva)')
-      .addStringOption((o) => o.setName('nome').setDescription('Personaggio').setAutocomplete(true)),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('modifica')
-      .setDescription('Modifica Groove, concept o Ricordo del personaggio attivo')
-      .addStringOption((o) => o.setName('groove').setDescription('Nuovo Groove').addChoices(...grooveChoices))
-      .addStringOption((o) => o.setName('concept').setDescription('Nuovo concept').setMaxLength(100))
-      .addStringOption((o) => o.setName('ricordo').setDescription('Nuovo Ricordo').setMaxLength(200)),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('elimina')
-      .setDescription('Elimina un personaggio')
-      .addStringOption((o) => o.setName('nome').setDescription('Personaggio').setRequired(true).setAutocomplete(true)),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('tratto-aggiungi')
-      .setDescription('Aggiungi un tratto al personaggio attivo')
-      .addStringOption((o) => o.setName('nome').setDescription('Es. «Rossetto Rosso»').setRequired(true).setMaxLength(60))
-      .addStringOption((o) =>
-        o
-          .setName('approccio')
-          .setDescription('Esagono in cui scriverlo')
-          .setRequired(true)
-          .addChoices(...approachChoices, { name: 'MONO (nave personale)', value: 'MONO' }),
-      ),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('tratto-rimuovi')
-      .setDescription('Rimuovi un tratto dal personaggio attivo')
-      .addStringOption((o) => o.setName('nome').setDescription('Tratto').setRequired(true).setAutocomplete(true)),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('tratto-ferita')
-      .setDescription('Segna o cura la ferita di un tratto')
-      .addStringOption((o) => o.setName('nome').setDescription('Tratto').setRequired(true).setAutocomplete(true))
-      .addIntegerOption((o) =>
-        o
-          .setName('stato')
-          .setDescription('Stato del tratto')
-          .setRequired(true)
-          .addChoices({ name: 'Integro', value: 0 }, { name: 'Ferito', value: 1 }, { name: 'Ferito gravemente', value: 2 }),
-      ),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('cartucce')
-      .setDescription('Imposta le Cartucce segnate')
-      .addIntegerOption((o) => o.setName('valore').setDescription('Da 0 a 6').setRequired(true).setMinValue(0).setMaxValue(MAX_CARTRIDGES)),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('ritmo')
-      .setDescription('Imposta il Ritmo del personaggio attivo')
-      .addIntegerOption((o) => o.setName('valore').setDescription('Da 0 a 6').setRequired(true).setMinValue(0).setMaxValue(MAX_RITMO)),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('fardello')
-      .setDescription('Aggiungi un Fardello o segnalo come risolto (X)')
-      .addStringOption((o) => o.setName('titolo').setDescription('Titolo della Session').setRequired(true).setMaxLength(100))
-      .addBooleanOption((o) => o.setName('risolto').setDescription('Segna la X accanto al Fardello')),
-  );
+const actionOption = (specs: readonly ActionSpec[]) => (o: SlashCommandStringOption) =>
+  o
+    .setName('azione')
+    .setDescription('Cosa vuoi fare')
+    .setRequired(true)
+    .addChoices(...specs.map((a) => ({ name: a.label, value: a.id })));
 
-export const partitaCommand = new SlashCommandBuilder()
-  .setName('partita')
-  .setDescription('Stato della partita in questo canale')
-  .addSubcommand((s) => s.setName('stato').setDescription('Mostra svolta, Difficoltà e Genere'))
-  .addSubcommand((s) =>
-    s
-      .setName('svolta')
-      .setDescription('Passa a una svolta: la Difficoltà torna a quella iniziale')
-      .addIntegerOption((o) =>
-        o
-          .setName('numero')
-          .setDescription('Svolta')
-          .setRequired(true)
-          .addChoices({ name: '1 · G.E.S.T.', value: 1 }, { name: '2 · 3, 2, 1…', value: 2 }, { name: "3 · Let's Jam!", value: 3 }),
-      ),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('difficolta')
-      .setDescription('Cambia la Difficoltà della svolta')
-      .addIntegerOption((o) => o.setName('variazione').setDescription('Es. -1 per un successo speso, +1 per uno shock'))
-      .addIntegerOption((o) => o.setName('valore').setDescription('Imposta un valore preciso').setMinValue(0)),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('genere')
-      .setDescription('Imposta il Genere della Session')
-      .addStringOption((o) =>
-        o.setName('approccio').setDescription('Genere').setRequired(true).addChoices(...approachChoices, { name: 'Nessuno', value: 'nessuno' }),
-      ),
-  )
-  .addSubcommand((s) =>
-    s
-      .setName('shock-minimo')
-      .setDescription('Shock minimo per Prova (2 con un orologio minaccia Dance chiuso)')
-      .addIntegerOption((o) => o.setName('valore').setDescription('1 o 2').setRequired(true).setMinValue(1).setMaxValue(2)),
-  );
+const areaCommand = (name: AreaName, description: string) => (c: SlashCommandSubcommandBuilder) =>
+  c.setName(name).setDescription(description).addStringOption(actionOption(AREAS[name]));
 
-export const allCommands = [provaCommand, schedaCommand, partitaCommand];
+const schedaCommand = areaCommand('scheda', 'Gestisci le schede dei tuoi personaggi');
+const partitaCommand = areaCommand('partita', 'Stato della partita in questo canale');
+const orologioCommand = areaCommand('orologio', 'Orologi della svolta: obiettivi, minacce, inseguimenti');
+const rischioCommand = areaCommand('rischio', 'Il Rischio del Big Shot');
+
+/**
+ * Un solo comando, /cowbot, con un sottocomando per area:
+ * - /cowbot prova
+ * - /cowbot scheda | partita | orologio | rischio: scegli l'azione e il bot
+ *   apre un form con i soli campi che servono (src/commands/forms.ts)
+ */
+export const allCommands = [
+  new SlashCommandBuilder()
+    .setName(ROOT_COMMAND)
+    .setDescription('Cowboy BeBOT: Prove, schede, partita, orologi e Rischio')
+    .addSubcommand(provaCommand)
+    .addSubcommand(schedaCommand)
+    .addSubcommand(partitaCommand)
+    .addSubcommand(orologioCommand)
+    .addSubcommand(rischioCommand),
+];

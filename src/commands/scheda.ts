@@ -1,6 +1,7 @@
-import { EmbedBuilder, MessageFlags, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
+import { EmbedBuilder, MessageFlags } from 'discord.js';
 import { APPROACHES, GROOVES, MAX_CARTRIDGES, isGrooveId, type TraitSlot } from '../engine/rules.js';
 import type { Context } from '../context.js';
+import type { Args, Interactive } from './args.js';
 import { approachColorInt } from '../render/theme.js';
 import {
   SheetError,
@@ -14,21 +15,20 @@ import {
   type Wound,
 } from '../store/characters.js';
 
-export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context): Promise<void> {
-  const sub = i.options.getSubcommand();
+export async function handleScheda(i: Interactive, ctx: Context, sub: string, a: Args): Promise<void> {
   const userId = i.user.id;
   try {
     switch (sub) {
       case 'crea': {
-        const groove = i.options.getString('groove');
+        const groove = a.str('groove');
         const c = ctx.characters.create(userId, {
-          name: i.options.getString('nome', true),
-          concept: i.options.getString('concept') ?? '',
-          memory: i.options.getString('ricordo') ?? '',
+          name: a.reqStr('nome'),
+          concept: a.str('concept') ?? '',
+          memory: a.str('ricordo') ?? '',
           groove: groove && isGrooveId(groove) ? groove : null,
         });
         await i.reply({
-          content: `Creato **${c.name}**, ora è il tuo personaggio attivo. Aggiungi i tratti con \`/scheda tratto-aggiungi\`: alla creazione ne servono 4, al massimo 2 nello stesso Approccio.`,
+          content: `Creato **${c.name}**, ora è il tuo personaggio attivo. Aggiungi i tratti con \`/cowbot scheda azione:tratto-aggiungi\`: alla creazione ne servono 4, al massimo 2 nello stesso Approccio.`,
           embeds: [sheetEmbed(c)],
           flags: MessageFlags.Ephemeral,
         });
@@ -38,24 +38,24 @@ export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context)
         const list = ctx.characters.list(userId);
         const text = list.length
           ? list.map((c) => `${c.active ? '▶' : '·'} **${c.name}**${c.concept ? ` · ${c.concept}` : ''}`).join('\n')
-          : 'Nessun personaggio. Creane uno con `/scheda crea`.';
+          : 'Nessun personaggio. Creane uno con `/cowbot scheda azione:crea`.';
         await i.reply({ content: text, flags: MessageFlags.Ephemeral });
         return;
       }
       case 'usa': {
-        const c = ctx.characters.setActive(userId, i.options.getString('nome', true));
+        const c = ctx.characters.setActive(userId, a.reqStr('nome'));
         await i.reply({ content: `Ora giochi con **${c.name}**.`, flags: MessageFlags.Ephemeral });
         return;
       }
       case 'mostra': {
-        const name = i.options.getString('nome');
+        const name = a.str('nome');
         const c = name ? ctx.characters.byName(userId, name) : ctx.characters.active(userId);
         if (!c) throw new SheetError(name ? `Non hai un personaggio chiamato «${name}».` : 'Non hai un personaggio attivo.');
         await i.reply({ embeds: [sheetEmbed(c)] });
         return;
       }
       case 'elimina': {
-        const c = ctx.characters.delete(userId, i.options.getString('nome', true));
+        const c = ctx.characters.delete(userId, a.reqStr('nome'));
         const next = ctx.characters.active(userId);
         await i.reply({
           content: `Eliminato **${c.name}**.${next ? ` Personaggio attivo: **${next.name}**.` : ''}`,
@@ -67,53 +67,53 @@ export async function handleScheda(i: ChatInputCommandInteraction, ctx: Context)
 
     // I comandi seguenti agiscono sul personaggio attivo.
     const c = ctx.characters.active(userId);
-    if (!c) throw new SheetError('Non hai un personaggio attivo. Creane uno con `/scheda crea`.');
+    if (!c) throw new SheetError('Non hai un personaggio attivo. Creane uno con `/cowbot scheda azione:crea`.');
     let next: Character;
     let note: string;
     switch (sub) {
       case 'modifica': {
-        const groove = i.options.getString('groove');
+        const groove = a.str('groove');
         next = {
           ...c,
           groove: groove && isGrooveId(groove) ? groove : c.groove,
-          concept: i.options.getString('concept') ?? c.concept,
-          memory: i.options.getString('ricordo') ?? c.memory,
+          concept: a.str('concept') ?? c.concept,
+          memory: a.str('ricordo') ?? c.memory,
         };
         note = 'Scheda aggiornata.';
         break;
       }
       case 'tratto-aggiungi': {
-        const name = i.options.getString('nome', true);
-        next = addTrait(c, name, i.options.getString('approccio', true) as TraitSlot);
+        const name = a.reqStr('nome');
+        next = addTrait(c, name, a.reqStr('approccio') as TraitSlot);
         note = `Aggiunto il tratto **${name.trim()}**.`;
         break;
       }
       case 'tratto-rimuovi': {
-        const name = i.options.getString('nome', true);
+        const name = a.reqStr('nome');
         next = removeTrait(c, name);
         note = `Rimosso il tratto **${name}**.`;
         break;
       }
       case 'tratto-ferita': {
-        const name = i.options.getString('nome', true);
-        const wound = i.options.getInteger('stato', true) as Wound;
+        const name = a.reqStr('nome');
+        const wound = a.reqInt('stato') as Wound;
         next = setWound(c, name, wound);
         note = `**${name}**: ${woundLabel(wound)}.`;
         break;
       }
       case 'cartucce': {
-        next = setCartridges(c, i.options.getInteger('valore', true));
+        next = setCartridges(c, a.reqInt('valore'));
         note = `Cartucce segnate: ${next.cartridges}/${MAX_CARTRIDGES}.`;
         break;
       }
       case 'ritmo': {
-        next = setRitmo(c, i.options.getInteger('valore', true));
+        next = setRitmo(c, a.reqInt('valore'));
         note = `Ritmo: ${next.ritmo}.`;
         break;
       }
       case 'fardello': {
-        const title = i.options.getString('titolo', true).trim();
-        const resolved = i.options.getBoolean('risolto') ?? false;
+        const title = a.reqStr('titolo').trim();
+        const resolved = a.bool('risolto') ?? false;
         const existing = c.burdens.find((b) => b.title.toLocaleLowerCase('it') === title.toLocaleLowerCase('it'));
         next = existing
           ? { ...c, burdens: c.burdens.map((b) => (b === existing ? { ...b, resolved } : b)) }
@@ -174,21 +174,4 @@ export function sheetEmbed(c: Character): EmbedBuilder {
     });
   }
   return embed;
-}
-
-export async function autocompleteScheda(i: AutocompleteInteraction, ctx: Context): Promise<void> {
-  const typed = i.options.getFocused().toLocaleLowerCase('it');
-  const sub = i.options.getSubcommand();
-  let names: string[];
-  if (sub.startsWith('tratto')) {
-    names = ctx.characters.active(i.user.id)?.traits.map((t) => t.name) ?? [];
-  } else {
-    names = ctx.characters.list(i.user.id).map((c) => c.name);
-  }
-  await i.respond(
-    names
-      .filter((n) => n.toLocaleLowerCase('it').includes(typed))
-      .slice(0, 25)
-      .map((n) => ({ name: n, value: n })),
-  );
 }

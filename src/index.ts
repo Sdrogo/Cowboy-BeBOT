@@ -1,9 +1,13 @@
 import 'dotenv/config';
 import { Client, Events, GatewayIntentBits, MessageFlags, type Interaction } from 'discord.js';
 import { createContext, type Context } from './context.js';
-import { handlePartita } from './commands/partita.js';
+import { ROOT_COMMAND } from './commands/definitions.js';
+import { isArea, startAction, submitForm } from './commands/dispatch.js';
+import { FORM_PREFIX } from './commands/forms.js';
+import { SESSION_PREFIX, handleSessionComponent } from './commands/partita.js';
+import { END_PREFIX, handleEndComponent } from './commands/fine.js';
 import { PROVA_PREFIX, autocompleteProva, handleProva, handleProvaComponent } from './commands/prova.js';
-import { autocompleteScheda, handleScheda } from './commands/scheda.js';
+import { warmUpRenderer } from './render/satori.js';
 import { openDatabase } from './store/db.js';
 
 const token = process.env.DISCORD_TOKEN;
@@ -16,7 +20,10 @@ const db = openDatabase(process.env.DATABASE_PATH ?? 'data/cowboy-bebot.sqlite')
 const ctx = createContext(db);
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-client.once(Events.ClientReady, (c) => console.log(`Cowboy BeBOT in linea come ${c.user.tag}`));
+client.once(Events.ClientReady, (c) => {
+  console.log(`Cowboy BeBOT in linea come ${c.user.tag}`);
+  warmUpRenderer().catch((err) => console.warn('Avvio del disegno non riuscito:', err));
+});
 client.on(Events.InteractionCreate, (i) => {
   route(i, ctx).catch(async (err) => {
     console.error(err);
@@ -27,20 +34,24 @@ client.on(Events.InteractionCreate, (i) => {
 });
 
 async function route(i: Interaction, ctx: Context): Promise<void> {
-  if (i.isAutocomplete()) {
-    if (i.commandName === 'prova') return autocompleteProva(i, ctx);
-    if (i.commandName === 'scheda') return autocompleteScheda(i, ctx);
+  if (i.isAutocomplete() || i.isChatInputCommand()) {
+    // /cowbot prova, oppure /cowbot <area>: si sceglie l'azione e si compila il form.
+    if (i.commandName !== ROOT_COMMAND) return;
+    const area = i.options.getSubcommand();
+    if (i.isAutocomplete()) {
+      if (area === 'prova') return autocompleteProva(i, ctx);
+      return;
+    }
+    if (area === 'prova') return handleProva(i, ctx);
+    if (isArea(area)) return startAction(i, ctx, area);
     return;
   }
-  if (i.isChatInputCommand()) {
-    if (i.commandName === 'prova') return handleProva(i, ctx);
-    if (i.commandName === 'scheda') return handleScheda(i, ctx);
-    if (i.commandName === 'partita') return handlePartita(i, ctx);
-    return;
-  }
+  if (i.isModalSubmit() && i.customId.startsWith(`${FORM_PREFIX}:`)) return submitForm(i, ctx);
   if ((i.isButton() || i.isStringSelectMenu()) && i.customId.startsWith(`${PROVA_PREFIX}:`)) {
     return handleProvaComponent(i, ctx);
   }
+  if (i.isButton() && i.customId.startsWith(`${SESSION_PREFIX}:`)) return handleSessionComponent(i, ctx);
+  if (i.isButton() && i.customId.startsWith(`${END_PREFIX}:`)) return handleEndComponent(i, ctx);
 }
 
 // `docker stop` manda SIGTERM: chiudiamo Discord e il database prima di uscire.
