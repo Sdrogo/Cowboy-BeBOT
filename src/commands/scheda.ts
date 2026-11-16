@@ -167,6 +167,7 @@ export function sheetEmbed(c: Character): EmbedBuilder {
     { name: `Cartucce ${c.cartridges}/${MAX_CARTRIDGES}`, value: cylinder, inline: true },
     { name: 'Ritmo', value: String(c.ritmo), inline: true },
   );
+  if (c.reservedDie !== null) embed.addFields({ name: 'Dado messo da parte', value: `🎲 ${c.reservedDie} (Piani a Lungo Termine)`, inline: true });
   if (c.burdens.length) {
     embed.addFields({
       name: 'Fardelli',
