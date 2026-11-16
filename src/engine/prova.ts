@@ -41,6 +41,10 @@ export interface PoolPart {
 export interface Die {
   value: number;
   kept: boolean;
+  /** Piani a Lungo Termine: dado tolto dal tiro e conservato per una Prova successiva. */
+  aside?: boolean;
+  /** Piani a Lungo Termine: dado conservato in precedenza, aggiunto a questo tiro. */
+  fromPlan?: boolean;
 }
 
 export interface Absorption {
@@ -213,6 +217,36 @@ export function canAbsorb(result: ProvaResult, kind: Absorption['kind']): boolea
   if (result.absorbed.some((a) => a.kind === kind)) return false;
   if (kind === 'ferita' && result.input.traits.length === 0) return false;
   return true;
+}
+
+/**
+ * Piani a Lungo Termine (p. 71): subito dopo il tiro si toglie un dado e lo si
+ * conserva. Non si può più fare dopo aver assorbito o spinto, né aggiungendo
+ * il dado conservato nella stessa Prova.
+ */
+export function canSetAside(result: ProvaResult): boolean {
+  if (result.pushed || result.absorbed.length > 0) return false;
+  return !result.dice.some((d) => d.aside || d.fromPlan);
+}
+
+/** Toglie il dado `index` dal tiro (non conta più) e restituisce il suo valore. */
+export function setAside(result: ProvaResult, index: number): { result: ProvaResult; value: number } | null {
+  const die = result.dice[index];
+  if (!die || !die.kept || !canSetAside(result)) return null;
+  const dice = result.dice.map((d, k) => (k === index ? { ...d, kept: false, aside: true } : d));
+  return { result: evaluate(result.input, dice, { pushed: result.pushed, absorbed: result.absorbed }), value: die.value };
+}
+
+/** Un dado conservato si può aggiungere una volta per Prova, e non se se ne è appena messo uno da parte. */
+export function canAddPlanned(result: ProvaResult): boolean {
+  return !result.dice.some((d) => d.aside || d.fromPlan);
+}
+
+/** Aggiunge al tiro il dado conservato, con il valore che aveva (p. 71). */
+export function addPlanned(result: ProvaResult, value: number): ProvaResult {
+  if (!canAddPlanned(result)) return result;
+  const dice = [...result.dice, { value, kept: true, fromPlan: true }];
+  return evaluate(result.input, dice, { pushed: result.pushed, absorbed: result.absorbed });
 }
 
 export function rollProva(input: ProvaInput, rng: Rng = Math.random): ProvaResult {

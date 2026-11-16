@@ -126,7 +126,8 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
       const roll = g.sessionType === 'classica' ? (prev?.roll ?? 1 + Math.floor(Math.random() * 6)) : null;
       const ritmo = clampRitmo(startingRitmo(g.sessionType, c, roll ?? 0));
       ctx.games.setPlayer(channelId, { userId: i.user.id, characterId: c.id, roll, ritmo, soloUsed: prev?.soloUsed ?? false });
-      ctx.characters.save(setRitmo(c, ritmo));
+      // Una nuova Session riparte senza il dado messo da parte (Piani a Lungo Termine).
+      ctx.characters.save({ ...setRitmo(c, ritmo), reservedDie: null });
       recomputeRischio(ctx, channelId);
       await i.deferUpdate();
       await i.editReply(await sessionView(ctx, channelId, true));

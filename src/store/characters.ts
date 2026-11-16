@@ -33,6 +33,8 @@ export interface Character {
   memory: string;
   cartridges: number;
   ritmo: number;
+  /** Piani a Lungo Termine: dado messo da parte per una Prova successiva, fino a fine Session. */
+  reservedDie: number | null;
   traits: Trait[];
   burdens: Burden[];
   active: boolean;
@@ -47,6 +49,7 @@ interface Row {
   memory: string;
   cartridges: number;
   ritmo: number;
+  reserved_die: number | null;
   traits: string;
   burdens: string;
   active: number;
@@ -61,6 +64,7 @@ const fromRow = (r: Row): Character => ({
   memory: r.memory,
   cartridges: r.cartridges,
   ritmo: r.ritmo,
+  reservedDie: r.reserved_die ?? null,
   traits: JSON.parse(r.traits) as Trait[],
   burdens: JSON.parse(r.burdens) as Burden[],
   active: r.active === 1,
@@ -150,7 +154,7 @@ export class CharacterStore {
   save(c: Character): Character {
     this.db
       .prepare(
-        `UPDATE characters SET name = ?, concept = ?, groove = ?, memory = ?, cartridges = ?, ritmo = ?,
+        `UPDATE characters SET name = ?, concept = ?, groove = ?, memory = ?, cartridges = ?, ritmo = ?, reserved_die = ?,
          traits = ?, burdens = ? WHERE id = ?`,
       )
       .run(
@@ -160,6 +164,7 @@ export class CharacterStore {
         c.memory,
         c.cartridges,
         c.ritmo,
+        c.reservedDie,
         JSON.stringify(c.traits),
         JSON.stringify(c.burdens),
         c.id,

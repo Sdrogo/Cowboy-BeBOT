@@ -16,6 +16,8 @@ export interface PendingProva {
   tags: string[];
   /** Il giocatore sta scegliendo quale tratto ferire. */
   choosingWound: boolean;
+  /** Il giocatore sta scegliendo quale dado mettere da parte (Piani a Lungo Termine). */
+  choosingDie: boolean;
   /** 'tiro': Riff e assorbimento; 'spesa': successi e shock da spendere. */
   phase: 'tiro' | 'spesa';
   spend: SpendState;
@@ -42,13 +44,14 @@ export class PendingStore {
   private readonly items = new Map<string, PendingProva>();
   private counter = 0;
 
-  add(p: Omit<PendingProva, 'id' | 'createdAt' | 'choosingWound' | 'phase' | 'spend' | 'solo'>): PendingProva {
+  add(p: Omit<PendingProva, 'id' | 'createdAt' | 'choosingWound' | 'choosingDie' | 'phase' | 'spend' | 'solo'>): PendingProva {
     this.sweep();
     const id = `${Date.now().toString(36)}${(this.counter++).toString(36)}`;
     const item: PendingProva = {
       ...p,
       id,
       choosingWound: false,
+      choosingDie: false,
       phase: 'tiro',
       solo: null,
       spend: { successes: 0, shocks: 0, log: [], noConvert: false, converted: 0 },
