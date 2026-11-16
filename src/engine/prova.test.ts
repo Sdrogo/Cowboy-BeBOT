@@ -138,3 +138,18 @@ describe('assorbire shock', () => {
     expect(canAbsorb(r, 'cartuccia')).toBe(true);
   });
 });
+
+describe('Ritmo al posto delle Cartucce', () => {
+  it('le Cartucce pagate con Ritmo danno gli stessi dadi ma con un\'altra etichetta', () => {
+    const pool = buildPool(base({ cartridges: 2, ritmoInstead: true }));
+    expect(pool.find((p) => p.label === 'da 2 Ritmo')?.dice).toBe(4);
+    expect(buildPool(base({ cartridges: 1, ritmoInstead: true })).some((p) => p.label === 'Ritmo')).toBe(true);
+  });
+
+  it('il Ritmo assorbe uno shock al posto della Cartuccia, una volta sola', () => {
+    const r = evaluate(base(), kept(1, 1, 3), { absorbed: [] });
+    const a = absorb(r, { kind: 'cartuccia', ritmo: true });
+    expect(a.absorbed).toEqual([{ kind: 'cartuccia', ritmo: true }]);
+    expect(canAbsorb(a, 'cartuccia')).toBe(false);
+  });
+});

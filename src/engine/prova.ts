@@ -29,6 +29,8 @@ export interface ProvaInput {
   /** Shock minimo per Prova: 1, oppure 2 con un orologio minaccia Dance chiuso (p. 25). */
   minShock: number;
   groove: GrooveId | null;
+  /** Le Cartucce di "farsi coinvolgere" sono pagate con Ritmo invece di segnarle (Personale, Filler, Climax 2). */
+  ritmoInstead?: boolean;
 }
 
 export interface PoolPart {
@@ -47,6 +49,8 @@ export interface Absorption {
   trait?: string;
   /** Ferita grave (tratti del MONO). */
   grave?: boolean;
+  /** Per kind === 'cartuccia': pagata con un Ritmo invece di segnare la Cartuccia. */
+  ritmo?: boolean;
 }
 
 export interface ProvaResult {
@@ -88,8 +92,9 @@ export function buildPool(input: ProvaInput): PoolPart[] {
   for (const trait of input.traits) parts.push({ label: trait, dice: 1 });
   if (input.genre) parts.push({ label: `Genere ${input.approach}`, dice: 1 });
   if (input.cartridges > 0) {
+    const unit = input.ritmoInstead ? 'Ritmo' : 'Cartuccia';
     parts.push({
-      label: input.cartridges === 1 ? 'Cartuccia' : `da ${input.cartridges} Cartucce`,
+      label: input.cartridges === 1 ? unit : input.ritmoInstead ? `da ${input.cartridges} Ritmo` : `da ${input.cartridges} Cartucce`,
       dice: 2 * input.cartridges,
     });
   }

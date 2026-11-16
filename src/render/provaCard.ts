@@ -288,7 +288,9 @@ function footer(data: ProvaCardData, accent: string): Node {
         mono(11, PAPER, 500),
         a.kind === 'ferita'
           ? `ASSORBITO · ${a.grave ? 'ferita grave' : 'ferita'} su «${a.trait}»`
-          : `ASSORBITO · Cartuccia segnata (${data.cartridges}/${MAX_CARTRIDGES})`,
+          : a.ritmo
+            ? 'ASSORBITO · Ritmo speso'
+            : `ASSORBITO · Cartuccia segnata (${data.cartridges}/${MAX_CARTRIDGES})`,
       ),
     );
   }

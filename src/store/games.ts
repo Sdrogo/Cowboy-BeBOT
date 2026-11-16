@@ -26,6 +26,16 @@ export interface Game {
   nextTurnEffects: TurnEffects;
   /** Utente che tirerà la prossima Prova con Svantaggio imposto dal Rischio ('*' = chiunque). */
   disadvantageFor: string | null;
+  /** Aiuti dichiarati e non ancora usati: si svuotano a ogni svolta. */
+  aids: Aid[];
+}
+
+/** Aiutare o Jam dichiarato da un CT: vale per la prossima Prova di `to` (p. 20). */
+export interface Aid {
+  from: string;
+  fromCharacterId: number;
+  to: string;
+  jam: boolean;
 }
 
 export interface SessionPlayer {
@@ -34,6 +44,8 @@ export interface SessionPlayer {
   /** Tiro del Ritmo (Classica) o null se il Ritmo non si tira. */
   roll: number | null;
   ritmo: number;
+  /** Assolo già usato: una volta per Session (p. 20). */
+  soloUsed: boolean;
 }
 
 interface Row {
@@ -52,6 +64,7 @@ interface Row {
   provas_in_turn: number;
   next_turn_effects: string;
   disadvantage_for: string | null;
+  aids: string;
 }
 
 export function newGame(channelId: string): Game {
@@ -71,6 +84,7 @@ export function newGame(channelId: string): Game {
     provasInTurn: 0,
     nextTurnEffects: {},
     disadvantageFor: null,
+    aids: [],
   };
 }
 
@@ -87,6 +101,7 @@ export function enterTurn(g: Game, turn: TurnNumber): Game {
     chase: false,
     provasInTurn: 0,
     nextTurnEffects: {},
+    aids: [],
   };
 }
 
@@ -112,6 +127,7 @@ export class GameStore {
       provasInTurn: row.provas_in_turn,
       nextTurnEffects: JSON.parse(row.next_turn_effects) as TurnEffects,
       disadvantageFor: row.disadvantage_for,
+      aids: JSON.parse(row.aids) as Aid[],
     };
   }
 
@@ -119,15 +135,15 @@ export class GameStore {
     this.db
       .prepare(
         `INSERT INTO games (channel_id, session_type, title, big_shot_id, turn, difficulty, genre, min_shock, rischio,
-           chase, difficulty_locked, blues_limit, provas_in_turn, next_turn_effects, disadvantage_for, updated_at)
+           chase, difficulty_locked, blues_limit, provas_in_turn, next_turn_effects, disadvantage_for, aids, updated_at)
          VALUES (@channelId, @sessionType, @title, @bigShotId, @turn, @difficulty, @genre, @minShock, @rischio,
-           @chase, @difficultyLocked, @bluesLimit, @provasInTurn, @nextTurnEffects, @disadvantageFor, datetime('now'))
+           @chase, @difficultyLocked, @bluesLimit, @provasInTurn, @nextTurnEffects, @disadvantageFor, @aids, datetime('now'))
          ON CONFLICT (channel_id) DO UPDATE SET session_type = excluded.session_type, title = excluded.title,
            big_shot_id = excluded.big_shot_id, turn = excluded.turn, difficulty = excluded.difficulty,
            genre = excluded.genre, min_shock = excluded.min_shock, rischio = excluded.rischio, chase = excluded.chase,
            difficulty_locked = excluded.difficulty_locked, blues_limit = excluded.blues_limit,
            provas_in_turn = excluded.provas_in_turn, next_turn_effects = excluded.next_turn_effects,
-           disadvantage_for = excluded.disadvantage_for, updated_at = excluded.updated_at`,
+           disadvantage_for = excluded.disadvantage_for, aids = excluded.aids, updated_at = excluded.updated_at`,
       )
       .run({
         ...g,
@@ -137,6 +153,7 @@ export class GameStore {
         difficultyLocked: g.difficultyLocked ? 1 : 0,
         bluesLimit: g.bluesLimit ? 1 : 0,
         nextTurnEffects: JSON.stringify(g.nextTurnEffects),
+        aids: JSON.stringify(g.aids),
       });
     return g;
   }
@@ -149,19 +166,19 @@ export class GameStore {
 
   players(channelId: string): SessionPlayer[] {
     const rows = this.db
-      .prepare('SELECT user_id, character_id, roll, ritmo FROM session_players WHERE channel_id = ? ORDER BY joined_at')
-      .all(channelId) as { user_id: string; character_id: number; roll: number | null; ritmo: number }[];
-    return rows.map((r) => ({ userId: r.user_id, characterId: r.character_id, roll: r.roll, ritmo: r.ritmo }));
+      .prepare('SELECT user_id, character_id, roll, ritmo, solo_used FROM session_players WHERE channel_id = ? ORDER BY joined_at')
+      .all(channelId) as { user_id: string; character_id: number; roll: number | null; ritmo: number; solo_used: number }[];
+    return rows.map((r) => ({ userId: r.user_id, characterId: r.character_id, roll: r.roll, ritmo: r.ritmo, soloUsed: r.solo_used === 1 }));
   }
 
   setPlayer(channelId: string, p: SessionPlayer): void {
     this.db
       .prepare(
-        `INSERT INTO session_players (channel_id, user_id, character_id, roll, ritmo) VALUES (?, ?, ?, ?, ?)
+        `INSERT INTO session_players (channel_id, user_id, character_id, roll, ritmo, solo_used) VALUES (?, ?, ?, ?, ?, ?)
          ON CONFLICT (channel_id, user_id) DO UPDATE SET character_id = excluded.character_id, roll = excluded.roll,
-         ritmo = excluded.ritmo`,
+         ritmo = excluded.ritmo, solo_used = excluded.solo_used`,
       )
-      .run(channelId, p.userId, p.characterId, p.roll, p.ritmo);
+      .run(channelId, p.userId, p.characterId, p.roll, p.ritmo, p.soloUsed ? 1 : 0);
   }
 
   clearPlayers(channelId: string): void {

@@ -36,6 +36,7 @@ export const AREAS = {
     { id: 'sessione', label: 'sessione · inizia una Session', required: ['tipo'] },
     { id: 'fine', label: 'fine · chiudi la Session (Big Shot)', required: ['esito'] },
     { id: 'the-end', label: 'the-end · finale di stagione' },
+    { id: 'aiuta', label: 'aiuta · spendi 1 Ritmo per aiutare un CT (o Jam)', required: ['chi'] },
     { id: 'stato', label: 'stato · svolta, Difficoltà, Genere' },
     { id: 'svolta', label: 'svolta · passa alla svolta successiva' },
     { id: 'difficolta', label: 'difficolta · cambia la Difficoltà', ranges: { valore: [0, 99] } },

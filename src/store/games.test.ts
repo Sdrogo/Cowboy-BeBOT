@@ -16,9 +16,17 @@ describe('partita', () => {
     const s = new GameStore(openDatabase(':memory:'));
     s.save({ ...newGame('c'), sessionType: 'filler', bigShotId: 'bs', rischio: 4, disadvantageFor: '*', nextTurnEffects: { minShock: 2 } });
     expect(s.get('c')).toMatchObject({ sessionType: 'filler', bigShotId: 'bs', rischio: 4, disadvantageFor: '*', nextTurnEffects: { minShock: 2 } });
-    s.setPlayer('c', { userId: 'u1', characterId: 1, roll: 3, ritmo: 3 });
-    s.setPlayer('c', { userId: 'u1', characterId: 1, roll: 3, ritmo: 4 });
-    expect(s.players('c')).toEqual([{ userId: 'u1', characterId: 1, roll: 3, ritmo: 4 }]);
+    s.setPlayer('c', { userId: 'u1', characterId: 1, roll: 3, ritmo: 3, soloUsed: false });
+    s.setPlayer('c', { userId: 'u1', characterId: 1, roll: 3, ritmo: 4, soloUsed: true });
+    expect(s.players('c')).toEqual([{ userId: 'u1', characterId: 1, roll: 3, ritmo: 4, soloUsed: true }]);
+  });
+
+  it('gli aiuti si salvano e finiscono con la svolta', () => {
+    const s = new GameStore(openDatabase(':memory:'));
+    const aid = { from: 'u1', fromCharacterId: 1, to: 'u2', jam: true };
+    s.save({ ...newGame('c'), turn: 3, aids: [aid] });
+    expect(s.get('c').aids).toEqual([aid]);
+    expect(enterTurn(s.get('c'), 3).aids).toEqual([]);
   });
 });
 

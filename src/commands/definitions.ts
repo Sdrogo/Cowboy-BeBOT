@@ -26,6 +26,15 @@ const provaCommand = (s: SlashCommandSubcommandBuilder) =>
   )
   .addBooleanOption((o) => o.setName('vantaggio').setDescription('Tira un dado in più e scarta il più basso'))
   .addBooleanOption((o) => o.setName('svantaggio').setDescription('Tira un dado in più e scarta il più alto'))
+  .addBooleanOption((o) =>
+    o.setName('ritmo').setDescription('Paga le Cartucce con Ritmo invece di segnarle (Personale, Climax 2; nel Filler è automatico)'),
+  )
+  .addStringOption((o) =>
+    o
+      .setName('improvvisa')
+      .setDescription('Improvvisare (1 Ritmo, dalla svolta 3, 2, 1…): usa anche i tratti di un secondo Approccio')
+      .addChoices(...approachChoices),
+  )
   .addIntegerOption((o) =>
     o.setName('modificatore').setDescription('Dadi in più o in meno (es. Groove della Taglia)').setMinValue(-10).setMaxValue(10),
   );

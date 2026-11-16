@@ -205,6 +205,13 @@ export function setRitmo(c: Character, value: number): Character {
   return { ...c, ritmo: Math.max(0, Math.min(MAX_RITMO, value)) };
 }
 
+export interface TraitCheckOptions {
+  /** Groove da usare al posto di quello del personaggio (Jam presta il Groove di un altro CT). */
+  groove?: GrooveId | null;
+  /** Secondo Approccio di Improvvisare. */
+  improvvisa?: Approach;
+}
+
 export interface TraitCheck {
   ok: Trait[];
   errors: string[];
@@ -220,8 +227,12 @@ export function checkTraitsForProva(
   names: string[],
   approach: Approach,
   disadvantage: boolean,
+  opts: TraitCheckOptions = {},
 ): TraitCheck {
-  const slots = usableTraitSlots(approach, c.groove);
+  const groove = opts.groove === undefined ? c.groove : opts.groove;
+  const slots = usableTraitSlots(approach, groove);
+  // Improvvisare: anche i tratti di un secondo Approccio (p. 20).
+  if (opts.improvvisa) slots.push(...usableTraitSlots(opts.improvvisa, groove));
   const ok: Trait[] = [];
   const errors: string[] = [];
   for (const raw of names) {
@@ -234,7 +245,7 @@ export function checkTraitsForProva(
       errors.push(`«${t.name}» è un tratto ${t.slot}: non vale in una Prova ${approach}.`);
     } else if (t.wound === 2) {
       errors.push(`«${t.name}» è ferito gravemente fino a fine Session.`);
-    } else if (t.wound === 1 && !(c.groove === 'testa-dura' && disadvantage)) {
+    } else if (t.wound === 1 && !(groove === 'testa-dura' && disadvantage)) {
       errors.push(`«${t.name}» è ferito.`);
     } else {
       ok.push(t);
