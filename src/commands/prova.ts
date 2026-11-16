@@ -13,11 +13,12 @@ import {
 } from 'discord.js';
 import { absorb, canAbsorb, canPush, push, rollProva, type ProvaResult } from '../engine/prova.js';
 import { MAX_CARTRIDGES, TURNS, isApproach, usableTraitSlots, type Approach } from '../engine/rules.js';
-import type { Clock } from '../engine/session.js';
+import { RIFF_MIN_TURN, cartridgeRule, type CartridgeRule, type Clock } from '../engine/session.js';
 import type { Context, PendingProva } from '../context.js';
 import { renderProvaCard } from '../render/provaCard.js';
 import { SheetError, checkTraitsForProva, findTrait, setCartridges, setWound, type Character } from '../store/characters.js';
 import type { Game } from '../store/games.js';
+import { spendRitmo } from './ritmo.js';
 import { clocksAlt, clocksCardData, closureAttachment, markClock } from './orologio.js';
 import type { ClockClosedData } from '../render/clockClosedCard.js';
 import type { ClocksCardData } from '../render/clocksCard.js';
@@ -43,19 +44,49 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     .map((n) => i.options.getString(n))
     .filter((v): v is string => Boolean(v && v.trim()));
   const cartridges = i.options.getInteger('cartucce') ?? 0;
-  const advantage = i.options.getBoolean('vantaggio') ?? false;
+  const improvvisaRaw = i.options.getString('improvvisa');
+  const improvvisa = improvvisaRaw && isApproach(improvvisaRaw) ? improvvisaRaw : null;
+  const wantRitmo = i.options.getBoolean('ritmo') ?? false;
   const modifier = i.options.getInteger('modificatore') ?? 0;
 
   const game = ctx.games.get(i.channelId);
   const tags: string[] = [];
+
+  // Aiutare e Jam dichiarati dagli altri CT (p. 20): Vantaggio, e con Jam il Groove dell'aiutante.
+  const aids = game.aids.filter((a) => a.to === i.user.id);
+  const advantage = (i.options.getBoolean('vantaggio') ?? false) || aids.length > 0;
+  const jamAid = aids.find((a) => a.jam);
+  const jamGroove = jamAid ? (ctx.characters.byId(jamAid.fromCharacterId)?.groove ?? null) : null;
+  for (const a of aids) {
+    const name = ctx.characters.byId(a.fromCharacterId)?.name ?? '???';
+    tags.push(a.jam ? `JAM DI ${name.toUpperCase()}` : `AIUTO DI ${name.toUpperCase()}`);
+  }
+
+  // Ritmo al posto delle Cartucce: sempre nel Filler, a scelta in Personale e Climax 2.
+  const rule = cartridgeRule(game.sessionType);
+  const payRitmo = cartridges > 0 && (rule === 'ritmo' || (rule === 'scelta' && wantRitmo));
   // Svantaggio imposto dal Big Shot spendendo Rischio (p. 34).
   const riskDisadvantage = game.disadvantageFor === '*' || game.disadvantageFor === i.user.id;
   if (riskDisadvantage) tags.push('SVANTAGGIO DAL RISCHIO');
   const disadvantage = (i.options.getBoolean('svantaggio') ?? false) || riskDisadvantage;
 
-  const check = checkTraitsForProva(character, traitNames, approach, disadvantage);
+  const check = checkTraitsForProva(character, traitNames, approach, disadvantage, {
+    groove: jamGroove ?? character.groove,
+    ...(improvvisa ? { improvvisa } : {}),
+  });
   const errors = [...check.errors];
-  if (character.cartridges + cartridges > MAX_CARTRIDGES) {
+  if (wantRitmo && rule === 'cartucce') {
+    errors.push('In questa Session il Ritmo non sostituisce le Cartucce (solo Personale, Filler e Climax 2).');
+  }
+  if (improvvisa) {
+    if (game.turn < RIFF_MIN_TURN) errors.push('Improvvisare si può dalla svolta 3, 2, 1… (p. 20).');
+    if (improvvisa === approach) errors.push('Improvvisare serve a usare un Approccio diverso da quello della Prova.');
+  }
+  const ritmoCost = (payRitmo ? cartridges : 0) + (improvvisa ? 1 : 0);
+  if (ritmoCost > character.ritmo) {
+    errors.push(`${character.name} ha ${character.ritmo} Ritmo, ne servono ${ritmoCost}.`);
+  }
+  if (!payRitmo && character.cartridges + cartridges > MAX_CARTRIDGES) {
     errors.push(`${character.name} ha solo ${MAX_CARTRIDGES - character.cartridges} Cartucce libere.`);
   }
   if (errors.length) {
@@ -75,7 +106,8 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     disadvantage,
     modifier,
     minShock: game.minShock,
-    groove: character.groove,
+    groove: jamGroove ?? character.groove,
+    ritmoInstead: payRitmo,
   });
   // Inseguimento: ci si spinge al limite finché non si ha almeno un successo (p. 36).
   if (game.chase) {
@@ -87,11 +119,14 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     ...game,
     provasInTurn: game.provasInTurn + 1,
     disadvantageFor: riskDisadvantage ? null : game.disadvantageFor,
+    aids: game.aids.filter((a) => a.to !== i.user.id),
   });
 
-  // Farsi coinvolgere: le Cartucce si segnano subito (p. 69).
+  // Farsi coinvolgere: le Cartucce si segnano subito (p. 69), oppure si spende Ritmo al loro posto.
   let updated = character;
-  if (cartridges > 0) updated = ctx.characters.save(setCartridges(character, character.cartridges + cartridges));
+  if (cartridges > 0 && !payRitmo) updated = ctx.characters.save(setCartridges(character, character.cartridges + cartridges));
+  if (ritmoCost > 0) updated = spendRitmo(ctx, i.channelId, updated, ritmoCost);
+  if (improvvisa) tags.push(`IMPROVVISA ${improvvisa.toUpperCase()}`);
 
   const pending = ctx.pending.add({
     userId: i.user.id,
@@ -100,6 +135,7 @@ export async function handleProva(i: ChatInputCommandInteraction, ctx: Context):
     channelId: i.channelId,
     result,
     tags,
+    aids,
   });
 
   // La card si disegna in qualche centinaio di millisecondi (di più su un VPS piccolo): Discord vuole una risposta entro 3 secondi.
@@ -118,8 +154,9 @@ function intro(p: PendingProva, c: Character, game: Game): string {
     if (r.autoShock > 0) lines.push(`-# Ogni Prova produce almeno ${r.input.minShock} shock: ${r.autoShock} automatico.`);
     if (r.input.cartridges > 0) {
       const n = r.input.cartridges;
-      lines.push(`-# Farsi coinvolgere: ${n === 1 ? '1 Cartuccia segnata' : `${n} Cartucce segnate`}.`);
+      lines.push(`-# Farsi coinvolgere: ${r.input.ritmoInstead ? (n === 1 ? '1 Ritmo speso' : `${n} Ritmo spesi`) : n === 1 ? '1 Cartuccia segnata' : `${n} Cartucce segnate`}.`);
     }
+    if (p.solo) lines.push(`-# Assolo di ${p.solo.name}: +1 successo da spendere.`);
     if (p.tags.includes('INSEGUIMENTO') && r.pushed) lines.push('-# Inseguimento: spinto al limite in automatico.');
   } else {
     const s = p.spend;
@@ -137,23 +174,43 @@ function intro(p: PendingProva, c: Character, game: Game): string {
 
 const cid = (p: PendingProva, action: string) => `${PROVA_PREFIX}:${p.id}:${action}`;
 
-function rollRows(p: PendingProva, c: Character): Row[] {
+const soloButton = (p: PendingProva) =>
+  new ButtonBuilder().setCustomId(cid(p, 'solo')).setLabel('Assolo (1 Ritmo, +1 successo)').setStyle(ButtonStyle.Secondary).setDisabled(Boolean(p.solo));
+
+function rollRows(p: PendingProva, c: Character, rule: CartridgeRule): Row[] {
   const r = p.result;
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const buttons = [
     new ButtonBuilder().setCustomId(cid(p, 'push')).setLabel('Spingersi al limite').setStyle(ButtonStyle.Primary).setDisabled(!canPush(r)),
     new ButtonBuilder()
       .setCustomId(cid(p, 'wound'))
       .setLabel('Assorbi: ferisci un tratto')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!canAbsorb(r, 'ferita')),
-    new ButtonBuilder()
-      .setCustomId(cid(p, 'cart'))
-      .setLabel(`Assorbi: Cartuccia (${c.cartridges}/${MAX_CARTRIDGES})`)
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(!canAbsorb(r, 'cartuccia') || c.cartridges >= MAX_CARTRIDGES),
-    new ButtonBuilder().setCustomId(cid(p, 'done')).setLabel('Conferma e spendi').setStyle(ButtonStyle.Success),
-  );
-  const rows: Row[] = [row];
+  ];
+  // Filler: niente Cartucce, solo Ritmo; Personale e Climax 2: l'uno o l'altro (pp. 42, 46, 52).
+  if (rule !== 'ritmo') {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(cid(p, 'cart'))
+        .setLabel(`Assorbi: Cartuccia (${c.cartridges}/${MAX_CARTRIDGES})`)
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(!canAbsorb(r, 'cartuccia') || c.cartridges >= MAX_CARTRIDGES),
+    );
+  }
+  if (rule !== 'cartucce') {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(cid(p, 'rit'))
+        .setLabel(`Assorbi: Ritmo (${c.ritmo})`)
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(!canAbsorb(r, 'cartuccia') || c.ritmo < 1),
+    );
+  }
+  buttons.push(new ButtonBuilder().setCustomId(cid(p, 'done')).setLabel('Conferma e spendi').setStyle(ButtonStyle.Success));
+  const rows: Row[] = [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(soloButton(p)),
+  ];
   if (p.choosingWound) {
     const menu = new StringSelectMenuBuilder()
       .setCustomId(cid(p, 'woundsel'))
@@ -196,6 +253,7 @@ function spendRows(p: PendingProva, game: Game, clocks: Clock[]): Row[] {
         .setLabel(game.difficultyLocked ? 'Difficoltà bloccata' : 'Successo: −1 Difficoltà')
         .setStyle(ButtonStyle.Primary)
         .setDisabled(s.successes === 0 || game.difficultyLocked || game.difficulty === 0),
+      soloButton(p),
       new ButtonBuilder().setCustomId(cid(p, 'end')).setLabel('Fine spesa').setStyle(ButtonStyle.Success),
     ),
   );
@@ -240,7 +298,7 @@ async function provaMessage(ctx: Context, p: PendingProva, c: Character, extra: 
   const file = new AttachmentBuilder(png, { name: 'prova.png', description: altText(p.result, c.name) + (extra ? ` Orologi: ${clocksAlt(extra)}.` : '') });
   const clocks = ctx.clocks.list(p.channelId, false);
   let components: Row[] = [];
-  if (!done) components = p.phase === 'tiro' ? rollRows(p, c) : spendRows(p, game, clocks);
+  if (!done) components = p.phase === 'tiro' ? rollRows(p, c, cartridgeRule(game.sessionType)) : spendRows(p, game, clocks);
   return {
     content: intro(p, c, game),
     files: [file],
@@ -258,7 +316,7 @@ function altText(r: ProvaResult, name: string): string {
 // --- Pulsanti ---
 
 /** Azioni del giocatore che ha tirato e azioni del Big Shot. */
-const PLAYER_ACTIONS = new Set(['push', 'wound', 'woundsel', 'cart', 'done', 'sclock', 'sdiff']);
+const PLAYER_ACTIONS = new Set(['push', 'wound', 'woundsel', 'cart', 'rit', 'done', 'sclock', 'sdiff']);
 const BIG_SHOT_ACTIONS = new Set(['kclock', 'kdiff', 'krisk', 'r1', 'r2']);
 
 export async function handleProvaComponent(i: ButtonInteraction | StringSelectMenuInteraction, ctx: Context): Promise<void> {
@@ -311,16 +369,52 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
         if (i.isStringSelectMenu() && i.values[0]) c = applyWound(ctx, p, c, i.values[0]);
         break;
       case 'cart':
-        if (canAbsorb(p.result, 'cartuccia') && c.cartridges < MAX_CARTRIDGES) {
+        if (cartridgeRule(game.sessionType) !== 'ritmo' && canAbsorb(p.result, 'cartuccia') && c.cartridges < MAX_CARTRIDGES) {
           p.result = absorb(p.result, { kind: 'cartuccia' });
           c = ctx.characters.save(setCartridges(c, c.cartridges + 1));
         }
         break;
+      case 'rit':
+        // Ritmo al posto della Cartuccia per assorbire uno shock (pp. 42, 46, 52).
+        if (cartridgeRule(game.sessionType) !== 'cartucce' && canAbsorb(p.result, 'cartuccia') && c.ritmo >= 1) {
+          p.result = absorb(p.result, { kind: 'cartuccia', ritmo: true });
+          c = spendRitmo(ctx, p.channelId, c, 1);
+        }
+        break;
+      case 'solo': {
+        // Assolo: una volta per Session, anche per una Prova di un altro CT (p. 20).
+        if (game.bigShotId === i.user.id) throw new SheetError('Gli Assolo sono dei Cacciatori di Taglie, non del Big Shot.');
+        const me = ctx.characters.active(i.user.id);
+        if (!me) throw new SheetError('Ti serve un personaggio attivo per fare un Assolo.');
+        if (p.solo) throw new SheetError(`Su questa Prova c'è già un Assolo di ${p.solo.name}.`);
+        if (me.ritmo < 1) throw new SheetError(`${me.name} non ha Ritmo da spendere.`);
+        const row = ctx.games.players(p.channelId).find((x) => x.userId === i.user.id);
+        if (row?.soloUsed) throw new SheetError(`${me.name} ha già fatto l'Assolo in questa Session.`);
+        const spent = spendRitmo(ctx, p.channelId, me, 1);
+        ctx.games.setPlayer(p.channelId, { userId: i.user.id, characterId: spent.id, roll: row?.roll ?? null, ritmo: spent.ritmo, soloUsed: true });
+        if (spent.id === c.id) c = spent;
+        p.solo = { userId: i.user.id, name: spent.name };
+        if (p.phase === 'spesa') {
+          s.successes++;
+          s.log.push(`Assolo di ${spent.name}: +1 successo da spendere.`);
+        }
+        break;
+      }
       case 'done':
         p.phase = 'spesa';
         p.choosingWound = false;
-        s.successes = p.result.successes;
+        s.successes = p.result.successes + (p.solo ? 1 : 0);
         s.shocks = p.result.shocksLeft;
+        if (p.solo) s.log.push(`Assolo di ${p.solo.name}: +1 successo da spendere.`);
+        // Chi ha aiutato rimuove una ferita al termine della Prova (p. 20).
+        for (const a of p.aids) {
+          const helper = ctx.characters.byId(a.fromCharacterId);
+          const wounded = helper?.traits.find((t) => t.wound === 1);
+          if (helper && wounded) {
+            ctx.characters.save(setWound(helper, wounded.name, 0));
+            s.log.push(`${helper.name} rimuove la ferita da «${wounded.name}».`);
+          }
+        }
         break;
 
       // Fase di spesa (p. 20)
@@ -421,7 +515,15 @@ export async function autocompleteProva(i: AutocompleteInteraction, ctx: Context
     return;
   }
   const approach = i.options.getString('approccio');
-  const slots = approach && isApproach(approach) ? [...usableTraitSlots(approach, c.groove), 'MONO'] : null;
+  // Jam presta il Groove dell'aiutante; Improvvisare apre i tratti di un secondo Approccio.
+  const game = ctx.games.get(i.channelId ?? '');
+  const jam = game.aids.find((a) => a.to === i.user.id && a.jam);
+  const groove = (jam ? ctx.characters.byId(jam.fromCharacterId)?.groove : null) ?? c.groove;
+  const second = i.options.getString('improvvisa');
+  const slots =
+    approach && isApproach(approach)
+      ? [...usableTraitSlots(approach, groove), ...(second && isApproach(second) ? usableTraitSlots(second, groove) : []), 'MONO']
+      : null;
   const typed = i.options.getFocused().toLocaleLowerCase('it');
   const disadvantage = i.options.getBoolean('svantaggio') ?? false;
   const focusedName = i.options.getFocused(true).name;
@@ -437,7 +539,7 @@ export async function autocompleteProva(i: AutocompleteInteraction, ctx: Context
     .filter((t) => (slots ? slots.includes(t.slot) : true))
     .filter((t) => !taken.has(t.name))
     // Ferito: inutilizzabile; grave: mai; Testa Dura solo con Svantaggio.
-    .filter((t) => t.wound === 0 || (t.wound === 1 && c.groove === 'testa-dura' && disadvantage))
+    .filter((t) => t.wound === 0 || (t.wound === 1 && groove === 'testa-dura' && disadvantage))
     .filter((t) => t.name.toLocaleLowerCase('it').includes(typed))
     .slice(0, 25)
     .map((t) => ({ name: `${t.name} · ${t.slot}${t.wound ? ' (ferito)' : ''}`, value: t.name }));
