@@ -45,6 +45,13 @@ export interface Die {
   aside?: boolean;
   /** Piani a Lungo Termine: dado conservato in precedenza, aggiunto a questo tiro. */
   fromPlan?: boolean;
+  /** Fuori dagli Schemi: dado trasformato in un 6 (spendendo uno shock); `was` è il valore tirato. */
+  boosted?: boolean;
+  was?: number;
+  /** Aggiustatutto: nuovo tiro del dado scartato con Svantaggio. */
+  retry?: number;
+  /** Aggiustatutto: il nuovo dado è stato tenuto (sostituisce lo scartato) o rifiutato. */
+  retryDecided?: boolean;
 }
 
 export interface Absorption {
@@ -80,6 +87,8 @@ export interface ProvaResult {
   successes: number;
   /** Shock prodotti dalla Prova, prima di assorbirli. */
   shocks: number;
+  /** Shock pagati con Fuori dagli Schemi (già inclusi in `shocks`). */
+  grooveShocks: number;
   absorbed: Absorption[];
   /** Shock rimasti al Big Shot dopo l'assorbimento. */
   shocksLeft: number;
@@ -165,7 +174,8 @@ export function evaluate(input: ProvaInput, dice: Die[], opts: EvaluateOptions =
   }
 
   const successes = diceSuccesses + (pushed ? 1 : 0) + bonuses.reduce((a, b) => a + b.successes, 0);
-  const shocks = shockFromOnes + autoShock + (pushed ? 2 : 0);
+  const grooveShocks = dice.filter((d) => d.boosted).length;
+  const shocks = shockFromOnes + autoShock + (pushed ? 2 : 0) + grooveShocks;
   const absorbed = (opts.absorbed ?? []).slice(0, maxAbsorb(shocks));
 
   return {
@@ -187,6 +197,7 @@ export function evaluate(input: ProvaInput, dice: Die[], opts: EvaluateOptions =
     bonuses,
     successes,
     shocks,
+    grooveShocks,
     absorbed,
     shocksLeft: shocks - absorbed.length,
   };
@@ -246,6 +257,54 @@ export function canAddPlanned(result: ProvaResult): boolean {
 export function addPlanned(result: ProvaResult, value: number): ProvaResult {
   if (!canAddPlanned(result)) return result;
   const dice = [...result.dice, { value, kept: true, fromPlan: true }];
+  return evaluate(result.input, dice, { pushed: result.pushed, absorbed: result.absorbed });
+}
+
+// --- Groove con scelte dopo il tiro (p. 72) ---
+
+const untouched = (r: ProvaResult) => !r.pushed && r.absorbed.length === 0;
+
+/** Fuori dagli Schemi: subito dopo il tiro, uno shock per trasformare un dado da 2-5 in un 6. */
+export function canBoost(result: ProvaResult): boolean {
+  if (result.input.groove !== 'fuori-dagli-schemi' || !untouched(result)) return false;
+  if (result.dice.some((d) => d.boosted)) return false;
+  return result.dice.some((d) => d.kept && !d.aside && d.value >= 2 && d.value <= 5);
+}
+
+export function boostDie(result: ProvaResult, index: number): ProvaResult {
+  const die = result.dice[index];
+  if (!die || !canBoost(result) || !die.kept || die.aside || die.value < 2 || die.value > 5) return result;
+  const dice = result.dice.map((d, k) => (k === index ? { ...d, value: 6, boosted: true, was: d.value } : d));
+  return evaluate(result.input, dice, { pushed: result.pushed, absorbed: result.absorbed });
+}
+
+/** Il dado scartato dallo Svantaggio, se c'è ed è ancora da ritirare. */
+const discardedIndex = (result: ProvaResult) => result.dice.findIndex((d) => !d.kept && !d.aside && d.retry === undefined);
+
+/** Aggiustatutto: con Svantaggio si può tirare di nuovo il dado rimosso (p. 72). */
+export function canRetry(result: ProvaResult): boolean {
+  return result.input.groove === 'aggiustatutto' && result.mode === 'svantaggio' && untouched(result) && discardedIndex(result) >= 0;
+}
+
+export function retryDie(result: ProvaResult, rng: Rng = Math.random): ProvaResult {
+  const index = discardedIndex(result);
+  if (!canRetry(result)) return result;
+  const dice = result.dice.map((d, k) => (k === index ? { ...d, retry: d6(rng) } : d));
+  return evaluate(result.input, dice, { pushed: result.pushed, absorbed: result.absorbed });
+}
+
+/** Il nuovo dado aspetta una scelta: tenerlo nel risultato o lasciarlo perdere. */
+export function retryPending(result: ProvaResult): boolean {
+  return result.dice.some((d) => !d.kept && d.retry !== undefined && !d.retryDecided);
+}
+
+/** Tiene il nuovo dado al posto di quello scartato, oppure lo rifiuta. */
+export function decideRetry(result: ProvaResult, keep: boolean): ProvaResult {
+  const index = result.dice.findIndex((d) => !d.kept && d.retry !== undefined && !d.retryDecided);
+  if (index < 0) return result;
+  const dice = result.dice.map((d, k) =>
+    k !== index ? d : keep ? { ...d, value: d.retry!, kept: true, was: d.value, retryDecided: true } : { ...d, retryDecided: true },
+  );
   return evaluate(result.input, dice, { pushed: result.pushed, absorbed: result.absorbed });
 }
 

@@ -114,8 +114,15 @@ function dieCaption(d: Die, result: ProvaResult, accent: string): Node {
   let text = ' ';
   let color = MUTED;
   if (d.aside) text = 'DA PARTE';
+  else if (!d.kept && d.retry !== undefined) text = d.retryDecided ? 'SCARTATO' : `NUOVO ${d.retry}?`;
   else if (!d.kept) text = 'SCARTATO';
-  else if (d.fromPlan && d.value !== 6 && d.value !== 1) text = 'PIANO';
+  else if (d.boosted) {
+    text = `ERA ${d.was}`;
+    color = accent;
+  } else if (d.retryDecided && d.value !== 1) {
+    text = d.value === 6 ? 'RITIRO · SEI' : 'RITIRO';
+    color = d.value === 6 ? accent : MUTED;
+  } else if (d.fromPlan && d.value !== 6 && d.value !== 1) text = 'PIANO';
   else if (d.value === 6) {
     text = 'SEI';
     color = accent;
