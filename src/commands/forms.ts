@@ -11,7 +11,7 @@ import {
 } from 'discord.js';
 import type { Context } from '../context.js';
 import { APPROACHES, GROOVES, GROOVE_IDS, MAX_CARTRIDGES, MAX_RITMO } from '../engine/rules.js';
-import { CLOCK_KINDS, CLOCK_SIZES, SESSION_LABELS, SESSION_TYPES } from '../engine/session.js';
+import { CLOCK_KINDS, CLOCK_SIZES, RIFF_MIN_TURN, SESSION_LABELS, SESSION_TYPES } from '../engine/session.js';
 import { Args, type ArgValue } from './args.js';
 import type { AreaName } from './actions.js';
 
@@ -121,6 +121,22 @@ export function formFor(area: AreaName, action: string, ctx: Context, userId: st
         text('titolo', 'Titolo della Session', { maxLength: 100 }),
         select('approccio', 'Genere della Session', approaches),
       ];
+    case 'partita:aiuta': {
+      const turn = ctx.games.get(channelId).turn;
+      if (turn < RIFF_MIN_TURN) return 'Aiutare si può dalla svolta 3, 2, 1… (p. 20).';
+      const fields: Field[] = [{ id: 'chi', label: 'Chi vuoi aiutare?', kind: 'user', required: true }];
+      if (turn === 3) {
+        fields.push(
+          select(
+            'jam',
+            "Jam: presta anche il tuo Groove (Let's Jam!)",
+            [{ label: 'No, solo Vantaggio (Aiutare)', value: 'no' }, { label: 'Sì, Jam', value: 'si' }],
+            { as: 'bool' },
+          ),
+        );
+      }
+      return fields;
+    }
     case 'partita:fine':
       return [select('esito', "Com'è finita la svolta Let's Jam!", [{ label: 'Positiva', value: 'positiva' }, { label: 'Negativa', value: 'negativa' }], { required: true })];
     case 'partita:svolta':

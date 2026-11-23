@@ -11,6 +11,7 @@ import { MAX_RITMO, TURNS, isApproach, type Approach, type TurnNumber } from '..
 import {
   CLOCK_SIZES,
   SESSION_LABELS,
+  RIFF_MIN_TURN,
   clampRitmo,
   genreChosenByPlayers,
   isSessionType,
@@ -24,6 +25,7 @@ import { enterTurn, newGame, type Game } from '../store/games.js';
 import { renderSessionCard } from '../render/sessionCard.js';
 import { approachColorInt } from '../render/theme.js';
 import { setRitmo } from '../store/characters.js';
+import { spendRitmo } from './ritmo.js';
 import { askEndSession, replyTheEnd } from './fine.js';
 import { clocksAttachment } from './orologio.js';
 
@@ -57,6 +59,7 @@ function turnFlags(g: Game): string[] {
   if (g.chase) out.push('**Inseguimento**: le Prove con 0 successi si Spingono da sole.');
   if (g.difficultyLocked) out.push('**Minaccia Jazz**: la Difficoltà non può scendere.');
   if (g.bluesLimit) out.push('**Minaccia Blues**: mostrare le ferite ne cura una sola.');
+  for (const a of g.aids) out.push(`**${a.jam ? 'Jam' : 'Aiuto'}** di <@${a.from}> per <@${a.to}>: la sua prossima Prova ha Vantaggio${a.jam ? ' e il Groove prestato' : ''}.`);
   if (g.disadvantageFor) out.push(`Prossima Prova${g.disadvantageFor === '*' ? '' : ` di <@${g.disadvantageFor}>`} con **Svantaggio** dal Rischio.`);
   const fx = g.nextTurnEffects;
   if (Object.keys(fx).length) out.push('Effetti di minacce chiuse in arrivo alla prossima svolta.');
@@ -122,8 +125,9 @@ export async function handleSessionComponent(i: ButtonInteraction, ctx: Context)
       // Nella Classica il Ritmo si tira una volta sola: chi si riunisce tiene il suo tiro.
       const roll = g.sessionType === 'classica' ? (prev?.roll ?? 1 + Math.floor(Math.random() * 6)) : null;
       const ritmo = clampRitmo(startingRitmo(g.sessionType, c, roll ?? 0));
-      ctx.games.setPlayer(channelId, { userId: i.user.id, characterId: c.id, roll, ritmo });
-      ctx.characters.save(setRitmo(c, ritmo));
+      ctx.games.setPlayer(channelId, { userId: i.user.id, characterId: c.id, roll, ritmo, soloUsed: prev?.soloUsed ?? false });
+      // Una nuova Session riparte senza il dado messo da parte (Piani a Lungo Termine).
+      ctx.characters.save({ ...setRitmo(c, ritmo), reservedDie: null });
       recomputeRischio(ctx, channelId);
       await i.deferUpdate();
       await i.editReply(await sessionView(ctx, channelId, true));
@@ -180,6 +184,9 @@ export async function handlePartita(i: Interactive, ctx: Context, sub: string, a
       });
       return;
     }
+    case 'aiuta':
+      await aiuta(i, ctx, g, a);
+      return;
     case 'fine':
       await askEndSession(i, ctx, a);
       return;
@@ -252,4 +259,27 @@ export async function handlePartita(i: Interactive, ctx: Context, sub: string, a
       return;
     }
   }
+}
+
+/** Aiutare e Jam: si dichiarano prima del tiro, e valgono per la prossima Prova dell'aiutato (p. 20). */
+async function aiuta(i: Interactive, ctx: Context, g: Game, a: Args): Promise<void> {
+  const no = (content: string) => i.reply({ content, flags: MessageFlags.Ephemeral });
+  if (g.turn < RIFF_MIN_TURN) return void (await no('Aiutare si può dalla svolta 3, 2, 1… (p. 20).'));
+  const target = a.user('chi');
+  if (!target || target.bot) return void (await no('Scegli un altro Cacciatore di Taglie da aiutare.'));
+  if (target.id === i.user.id) return void (await no('Non puoi aiutare te stesso.'));
+  if (g.bigShotId === target.id) return void (await no('Il Big Shot non fa Prove: scegli un CT.'));
+  const helper = ctx.characters.active(i.user.id);
+  if (!helper) return void (await no('Ti serve un personaggio attivo: creane uno con /cowbot scheda azione:crea.'));
+  if (helper.ritmo < 1) return void (await no(`${helper.name} non ha Ritmo da spendere.`));
+  if (g.aids.some((x) => x.from === i.user.id && x.to === target.id)) {
+    return void (await no(`Hai già aiutato ${target.displayName}: vale per la sua prossima Prova.`));
+  }
+  const jam = g.turn === 3 && (a.bool('jam') ?? false);
+  spendRitmo(ctx, i.channelId, helper, 1);
+  ctx.games.save({ ...g, aids: [...g.aids, { from: i.user.id, fromCharacterId: helper.id, to: target.id, jam }] });
+  await i.reply(
+    `**${helper.name}** spende 1 Ritmo per ${jam ? 'fare **Jam**' : 'dare una mano'} a ${target}: la sua prossima Prova ha Vantaggio` +
+      `${jam ? ` e usa il Groove di ${helper.name}` : ''}. Al termine del tiro ${helper.name} rimuove una ferita.`,
+  );
 }

@@ -67,12 +67,29 @@ const GAME_COLUMNS: Record<string, string> = {
   provas_in_turn: 'INTEGER NOT NULL DEFAULT 0',
   next_turn_effects: "TEXT NOT NULL DEFAULT '{}'",
   disadvantage_for: 'TEXT',
+  aids: "TEXT NOT NULL DEFAULT '[]'",
+};
+
+const CHARACTER_COLUMNS: Record<string, string> = {
+  reserved_die: 'INTEGER',
+};
+
+const PLAYER_COLUMNS: Record<string, string> = {
+  solo_used: 'INTEGER NOT NULL DEFAULT 0',
 };
 
 function migrate(db: Database.Database): void {
   const existing = new Set((db.prepare('PRAGMA table_info(games)').all() as { name: string }[]).map((c) => c.name));
   for (const [name, type] of Object.entries(GAME_COLUMNS)) {
     if (!existing.has(name)) db.exec(`ALTER TABLE games ADD COLUMN ${name} ${type}`);
+  }
+  const chars = new Set((db.prepare('PRAGMA table_info(characters)').all() as { name: string }[]).map((c) => c.name));
+  for (const [name, type] of Object.entries(CHARACTER_COLUMNS)) {
+    if (!chars.has(name)) db.exec(`ALTER TABLE characters ADD COLUMN ${name} ${type}`);
+  }
+  const players = new Set((db.prepare('PRAGMA table_info(session_players)').all() as { name: string }[]).map((c) => c.name));
+  for (const [name, type] of Object.entries(PLAYER_COLUMNS)) {
+    if (!players.has(name)) db.exec(`ALTER TABLE session_players ADD COLUMN ${name} ${type}`);
   }
 }
 

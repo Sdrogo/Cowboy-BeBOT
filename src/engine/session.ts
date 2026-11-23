@@ -46,6 +46,23 @@ export function startingRitmo(type: SessionType, p: PlayerSheet, roll: number): 
   }
 }
 
+/**
+ * Come si pagano le Cartucce (Farsi coinvolgere, assorbire shock):
+ * - 'ritmo': Filler, non si segnano Cartucce, si spende sempre Ritmo (p. 46).
+ * - 'scelta': Personale e Climax 2, si può spendere Ritmo invece di segnare una Cartuccia (pp. 42, 52).
+ * - 'cartucce': le altre Session, il Ritmo serve solo ai Riff.
+ */
+export type CartridgeRule = 'cartucce' | 'ritmo' | 'scelta';
+
+export function cartridgeRule(type: SessionType | null): CartridgeRule {
+  if (type === 'filler') return 'ritmo';
+  if (type === 'personale' || type === 'climax-2') return 'scelta';
+  return 'cartucce';
+}
+
+/** Aiutare, Improvvisare e Jam si usano dalla svolta 3, 2, 1… (p. 20). */
+export const RIFF_MIN_TURN = 2;
+
 /** La Classica tira il Ritmo con 1D6: il massimo è comunque 6 (p. 40). */
 export const clampRitmo = (v: number) => Math.max(0, Math.min(MAX_RITMO, v));
 

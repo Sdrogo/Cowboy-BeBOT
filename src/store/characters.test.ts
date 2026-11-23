@@ -80,3 +80,34 @@ describe('tratti utilizzabili in una Prova', () => {
     expect(() => addTrait(c, 'D', 'Dance')).toThrow(SheetError);
   });
 });
+
+describe('Improvvisare e Jam', () => {
+  const pg = () => {
+    let c = store().create('u1', { name: 'Faye' });
+    c = addTrait(c, 'Rossetto', 'Rock');
+    return addTrait(c, 'Occhiata', 'Jazz');
+  };
+
+  it('Improvvisare apre i tratti di un secondo Approccio', () => {
+    const c = pg();
+    expect(checkTraitsForProva(c, ['Occhiata'], 'Rock', false).errors).toHaveLength(1);
+    expect(checkTraitsForProva(c, ['Occhiata'], 'Rock', false, { improvvisa: 'Jazz' }).errors).toEqual([]);
+  });
+
+  it('Jam presta il Groove di un altro CT', () => {
+    const c = pg();
+    expect(checkTraitsForProva(c, ['Occhiata'], 'Dance', false).errors).toHaveLength(1);
+    expect(checkTraitsForProva(c, ['Occhiata'], 'Dance', false, { groove: 'piu-rapido-di-uno-sguardo' }).errors).toEqual([]);
+  });
+});
+
+describe('dado messo da parte', () => {
+  it('si salva sulla scheda e si svuota', () => {
+    const s = store();
+    const c = s.create('u1', { name: 'Spike' });
+    expect(c.reservedDie).toBeNull();
+    expect(s.save({ ...c, reservedDie: 5 }) && s.byId(c.id)?.reservedDie).toBe(5);
+    s.save({ ...c, reservedDie: null });
+    expect(s.byId(c.id)?.reservedDie).toBeNull();
+  });
+});

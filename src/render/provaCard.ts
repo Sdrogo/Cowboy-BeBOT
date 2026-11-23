@@ -113,7 +113,16 @@ function dieFace(d: Die, size: number, accent: string): Node {
 function dieCaption(d: Die, result: ProvaResult, accent: string): Node {
   let text = ' ';
   let color = MUTED;
-  if (!d.kept) text = 'SCARTATO';
+  if (d.aside) text = 'DA PARTE';
+  else if (!d.kept && d.retry !== undefined) text = d.retryDecided ? 'SCARTATO' : `NUOVO ${d.retry}?`;
+  else if (!d.kept) text = 'SCARTATO';
+  else if (d.boosted) {
+    text = `ERA ${d.was}`;
+    color = accent;
+  } else if (d.retryDecided && d.value !== 1) {
+    text = d.value === 6 ? 'RITIRO · SEI' : 'RITIRO';
+    color = d.value === 6 ? accent : MUTED;
+  } else if (d.fromPlan && d.value !== 6 && d.value !== 1) text = 'PIANO';
   else if (d.value === 6) {
     text = 'SEI';
     color = accent;
@@ -288,7 +297,9 @@ function footer(data: ProvaCardData, accent: string): Node {
         mono(11, PAPER, 500),
         a.kind === 'ferita'
           ? `ASSORBITO · ${a.grave ? 'ferita grave' : 'ferita'} su «${a.trait}»`
-          : `ASSORBITO · Cartuccia segnata (${data.cartridges}/${MAX_CARTRIDGES})`,
+          : a.ritmo
+            ? 'ASSORBITO · Ritmo speso'
+            : `ASSORBITO · Cartuccia segnata (${data.cartridges}/${MAX_CARTRIDGES})`,
       ),
     );
   }

@@ -33,7 +33,13 @@ describe('form delle azioni', () => {
   ctx.characters.create(userId, { name: 'Faye', concept: '', memory: '', groove: null });
   const c = ctx.characters.active(userId)!;
   ctx.characters.save({ ...c, traits: [{ name: 'Glock', slot: 'Rock', wound: 0 }] });
+  // Aiutare e Jam hanno un form solo dalla svolta 3, 2, 1…
+  ctx.games.setTurn(channelId, 3);
   ctx.clocks.create(channelId, { name: 'Fuga', size: 4, approach: 'Dance', kind: 'obiettivo' });
+
+  it('aiutare non ha form nella prima svolta', () => {
+    expect(formFor('partita', 'aiuta', ctx, userId, 'altro-canale')).toEqual(expect.any(String));
+  });
 
   for (const [area, specs] of Object.entries(AREAS)) {
     for (const spec of specs as readonly ActionSpec[]) {

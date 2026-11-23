@@ -2,7 +2,7 @@ import type { ProvaResult } from './engine/prova.js';
 import { CharacterStore } from './store/characters.js';
 import { ClockStore } from './store/clocks.js';
 import type { DB } from './store/db.js';
-import { GameStore } from './store/games.js';
+import { GameStore, type Aid } from './store/games.js';
 
 /** Prova in attesa di conferma: vive in memoria finché il giocatore non la conferma. */
 export interface PendingProva {
@@ -16,9 +16,15 @@ export interface PendingProva {
   tags: string[];
   /** Il giocatore sta scegliendo quale tratto ferire. */
   choosingWound: boolean;
+  /** Il giocatore sta scegliendo un dado: da mettere da parte (Piani a Lungo Termine) o da trasformare in 6 (Fuori dagli Schemi). */
+  choosingDie: 'aside' | 'boost' | null;
   /** 'tiro': Riff e assorbimento; 'spesa': successi e shock da spendere. */
   phase: 'tiro' | 'spesa';
   spend: SpendState;
+  /** Aiutare e Jam usati in questa Prova: chi aiuta rimuove una ferita al termine del tiro. */
+  aids: Aid[];
+  /** Assolo: un successo in più da spendere, con chi l'ha usato. */
+  solo: { userId: string; name: string } | null;
   createdAt: number;
 }
 
@@ -38,14 +44,16 @@ export class PendingStore {
   private readonly items = new Map<string, PendingProva>();
   private counter = 0;
 
-  add(p: Omit<PendingProva, 'id' | 'createdAt' | 'choosingWound' | 'phase' | 'spend'>): PendingProva {
+  add(p: Omit<PendingProva, 'id' | 'createdAt' | 'choosingWound' | 'choosingDie' | 'phase' | 'spend' | 'solo'>): PendingProva {
     this.sweep();
     const id = `${Date.now().toString(36)}${(this.counter++).toString(36)}`;
     const item: PendingProva = {
       ...p,
       id,
       choosingWound: false,
+      choosingDie: null,
       phase: 'tiro',
+      solo: null,
       spend: { successes: 0, shocks: 0, log: [], noConvert: false, converted: 0 },
       createdAt: Date.now(),
     };

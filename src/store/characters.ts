@@ -33,6 +33,8 @@ export interface Character {
   memory: string;
   cartridges: number;
   ritmo: number;
+  /** Piani a Lungo Termine: dado messo da parte per una Prova successiva, fino a fine Session. */
+  reservedDie: number | null;
   traits: Trait[];
   burdens: Burden[];
   active: boolean;
@@ -47,6 +49,7 @@ interface Row {
   memory: string;
   cartridges: number;
   ritmo: number;
+  reserved_die: number | null;
   traits: string;
   burdens: string;
   active: number;
@@ -61,6 +64,7 @@ const fromRow = (r: Row): Character => ({
   memory: r.memory,
   cartridges: r.cartridges,
   ritmo: r.ritmo,
+  reservedDie: r.reserved_die ?? null,
   traits: JSON.parse(r.traits) as Trait[],
   burdens: JSON.parse(r.burdens) as Burden[],
   active: r.active === 1,
@@ -150,7 +154,7 @@ export class CharacterStore {
   save(c: Character): Character {
     this.db
       .prepare(
-        `UPDATE characters SET name = ?, concept = ?, groove = ?, memory = ?, cartridges = ?, ritmo = ?,
+        `UPDATE characters SET name = ?, concept = ?, groove = ?, memory = ?, cartridges = ?, ritmo = ?, reserved_die = ?,
          traits = ?, burdens = ? WHERE id = ?`,
       )
       .run(
@@ -160,6 +164,7 @@ export class CharacterStore {
         c.memory,
         c.cartridges,
         c.ritmo,
+        c.reservedDie,
         JSON.stringify(c.traits),
         JSON.stringify(c.burdens),
         c.id,
@@ -205,6 +210,13 @@ export function setRitmo(c: Character, value: number): Character {
   return { ...c, ritmo: Math.max(0, Math.min(MAX_RITMO, value)) };
 }
 
+export interface TraitCheckOptions {
+  /** Groove da usare al posto di quello del personaggio (Jam presta il Groove di un altro CT). */
+  groove?: GrooveId | null;
+  /** Secondo Approccio di Improvvisare. */
+  improvvisa?: Approach;
+}
+
 export interface TraitCheck {
   ok: Trait[];
   errors: string[];
@@ -220,8 +232,12 @@ export function checkTraitsForProva(
   names: string[],
   approach: Approach,
   disadvantage: boolean,
+  opts: TraitCheckOptions = {},
 ): TraitCheck {
-  const slots = usableTraitSlots(approach, c.groove);
+  const groove = opts.groove === undefined ? c.groove : opts.groove;
+  const slots = usableTraitSlots(approach, groove);
+  // Improvvisare: anche i tratti di un secondo Approccio (p. 20).
+  if (opts.improvvisa) slots.push(...usableTraitSlots(opts.improvvisa, groove));
   const ok: Trait[] = [];
   const errors: string[] = [];
   for (const raw of names) {
@@ -234,7 +250,7 @@ export function checkTraitsForProva(
       errors.push(`«${t.name}» è un tratto ${t.slot}: non vale in una Prova ${approach}.`);
     } else if (t.wound === 2) {
       errors.push(`«${t.name}» è ferito gravemente fino a fine Session.`);
-    } else if (t.wound === 1 && !(c.groove === 'testa-dura' && disadvantage)) {
+    } else if (t.wound === 1 && !(groove === 'testa-dura' && disadvantage)) {
       errors.push(`«${t.name}» è ferito.`);
     } else {
       ok.push(t);

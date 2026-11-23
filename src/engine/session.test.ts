@@ -7,6 +7,7 @@ import {
   rollTheEnd,
   startingRischio,
   startingRitmo,
+  cartridgeRule,
   theEnd,
   threatOutcome,
   type Clock,
@@ -80,5 +81,16 @@ describe('fine Session', () => {
     expect(fardello(closingNotes('classica', 'positiva', false))).toBe(false);
     expect(fardello(closingNotes('classica', 'negativa', false))).toBe(true);
     expect(fardello(closingNotes('classica', 'positiva', true))).toBe(true);
+  });
+});
+
+describe('Ritmo al posto delle Cartucce', () => {
+  it('dipende dal tipo di Session', () => {
+    expect(cartridgeRule('filler')).toBe('ritmo');
+    expect(cartridgeRule('personale')).toBe('scelta');
+    expect(cartridgeRule('climax-2')).toBe('scelta');
+    expect(cartridgeRule('classica')).toBe('cartucce');
+    expect(cartridgeRule('climax-1')).toBe('cartucce');
+    expect(cartridgeRule(null)).toBe('cartucce');
   });
 });
