@@ -11,7 +11,24 @@ import {
   type InteractionUpdateOptions,
   type StringSelectMenuInteraction,
 } from 'discord.js';
-import { absorb, addPlanned, canAbsorb, canAddPlanned, canPush, canSetAside, push, rollProva, setAside, type ProvaResult } from '../engine/prova.js';
+import {
+  absorb,
+  addPlanned,
+  boostDie,
+  canAbsorb,
+  canAddPlanned,
+  canBoost,
+  canPush,
+  canRetry,
+  canSetAside,
+  decideRetry,
+  push,
+  retryDie,
+  retryPending,
+  rollProva,
+  setAside,
+  type ProvaResult,
+} from '../engine/prova.js';
 import { MAX_CARTRIDGES, TURNS, isApproach, usableTraitSlots, type Approach } from '../engine/rules.js';
 import { RIFF_MIN_TURN, cartridgeRule, type CartridgeRule, type Clock } from '../engine/session.js';
 import type { Context, PendingProva } from '../context.js';
@@ -158,6 +175,18 @@ function intro(p: PendingProva, c: Character, game: Game): string {
     }
     const aside = r.dice.find((d) => d.aside);
     if (aside) lines.push(`-# Piani a Lungo Termine: il dado ${aside.value} è messo da parte per una Prova successiva.`);
+    const boosted = r.dice.find((d) => d.boosted);
+    if (boosted) lines.push(`-# Fuori dagli Schemi: un ${boosted.was} diventa un 6, +1 shock.`);
+    const retried = r.dice.find((d) => d.retry !== undefined);
+    if (retried) {
+      lines.push(
+        !retried.retryDecided
+          ? `-# Aggiustatutto: il dado scartato (${retried.value}) ritirato fa ${retried.retry}. Tenerlo?`
+          : retried.kept
+            ? `-# Aggiustatutto: tenuto il nuovo dado (${retried.value}) al posto dello scartato (${retried.was}).`
+            : `-# Aggiustatutto: il nuovo dado (${retried.retry}) non viene tenuto.`,
+      );
+    }
     const planned = r.dice.find((d) => d.fromPlan);
     if (planned) lines.push(`-# Piani a Lungo Termine: aggiunto il dado messo da parte (${planned.value}).`);
     if (p.solo) lines.push(`-# Assolo di ${p.solo.name}: +1 successo da spendere.`);
@@ -228,16 +257,47 @@ function rollRows(p: PendingProva, c: Character, rule: CartridgeRule): Row[] {
             .setDisabled(!canSetAside(r)),
     );
   }
+  // Fuori dagli Schemi (p. 72): 1 shock per trasformare un dado da 2-5 in un 6.
+  if (r.input.groove === 'fuori-dagli-schemi') {
+    second.push(
+      new ButtonBuilder()
+        .setCustomId(cid(p, 'boost'))
+        .setLabel(r.grooveShocks > 0 ? 'Fuori dagli Schemi: già usato' : 'Fuori dagli Schemi: +1 shock, un dado diventa 6')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!canBoost(r)),
+    );
+  }
+  // Aggiustatutto (p. 72): con Svantaggio, tira di nuovo il dado scartato e tienilo se vuoi.
+  if (r.input.groove === 'aggiustatutto') {
+    if (retryPending(r)) {
+      const fresh = r.dice.find((d) => !d.kept && d.retry !== undefined && !d.retryDecided)!;
+      second.push(
+        new ButtonBuilder().setCustomId(cid(p, 'retrykeep')).setLabel(`Tieni il nuovo dado (${fresh.retry})`).setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId(cid(p, 'retryno')).setLabel('Lascia perdere').setStyle(ButtonStyle.Secondary),
+      );
+    } else {
+      second.push(
+        new ButtonBuilder()
+          .setCustomId(cid(p, 'retry'))
+          .setLabel('Aggiustatutto: ritira il dado scartato')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(!canRetry(r)),
+      );
+    }
+  }
   const rows: Row[] = [
     new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
     new ActionRowBuilder<ButtonBuilder>().addComponents(...second),
   ];
   if (p.choosingDie) {
+    const boost = p.choosingDie === 'boost';
     const menu = new StringSelectMenuBuilder()
-      .setCustomId(cid(p, 'plansel'))
-      .setPlaceholder('Quale dado conservi per dopo?')
+      .setCustomId(cid(p, boost ? 'boostsel' : 'plansel'))
+      .setPlaceholder(boost ? 'Quale dado diventa un 6?' : 'Quale dado conservi per dopo?')
       .addOptions(
-        r.dice.flatMap((d, k) => (d.kept ? [{ label: `Dado ${k + 1}: ${d.value}`, value: String(k) }] : [])),
+        r.dice.flatMap((d, k) =>
+          d.kept && !d.aside && (!boost || (d.value >= 2 && d.value <= 5)) ? [{ label: `Dado ${k + 1}: ${d.value}`, value: String(k) }] : [],
+        ),
       );
     rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu));
   }
@@ -346,7 +406,7 @@ function altText(r: ProvaResult, name: string): string {
 // --- Pulsanti ---
 
 /** Azioni del giocatore che ha tirato e azioni del Big Shot. */
-const PLAYER_ACTIONS = new Set(['push', 'wound', 'woundsel', 'cart', 'rit', 'plan', 'plansel', 'done', 'sclock', 'sdiff']);
+const PLAYER_ACTIONS = new Set(['push', 'wound', 'woundsel', 'cart', 'rit', 'plan', 'plansel', 'boost', 'boostsel', 'retry', 'retrykeep', 'retryno', 'done', 'sclock', 'sdiff']);
 const BIG_SHOT_ACTIONS = new Set(['kclock', 'kdiff', 'krisk', 'r1', 'r2']);
 
 export async function handleProvaComponent(i: ButtonInteraction | StringSelectMenuInteraction, ctx: Context): Promise<void> {
@@ -412,11 +472,11 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
           p.result = addPlanned(p.result, c.reservedDie);
           c = ctx.characters.save({ ...c, reservedDie: null });
         } else if (canSetAside(p.result)) {
-          p.choosingDie = true;
+          p.choosingDie = 'aside';
         }
         break;
       case 'plansel': {
-        p.choosingDie = false;
+        p.choosingDie = null;
         if (!i.isStringSelectMenu() || c.reservedDie !== null) break;
         const out = setAside(p.result, Number(i.values[0]));
         if (!out) break;
@@ -424,6 +484,20 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
         c = ctx.characters.save({ ...c, reservedDie: out.value });
         break;
       }
+      case 'boost':
+        if (canBoost(p.result)) p.choosingDie = 'boost';
+        break;
+      case 'boostsel':
+        p.choosingDie = null;
+        if (i.isStringSelectMenu() && i.values[0]) p.result = boostDie(p.result, Number(i.values[0]));
+        break;
+      case 'retry':
+        if (canRetry(p.result)) p.result = retryDie(p.result);
+        break;
+      case 'retrykeep':
+      case 'retryno':
+        p.result = decideRetry(p.result, action === 'retrykeep');
+        break;
       case 'rit':
         // Ritmo al posto della Cartuccia per assorbire uno shock (pp. 42, 46, 52).
         if (cartridgeRule(game.sessionType) !== 'cartucce' && canAbsorb(p.result, 'cartuccia') && c.ritmo >= 1) {
@@ -453,7 +527,7 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
       case 'done':
         p.phase = 'spesa';
         p.choosingWound = false;
-        p.choosingDie = false;
+        p.choosingDie = null;
         s.successes = p.result.successes + (p.solo ? 1 : 0);
         s.shocks = p.result.shocksLeft;
         if (p.solo) s.log.push(`Assolo di ${p.solo.name}: +1 successo da spendere.`);

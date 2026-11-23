@@ -16,8 +16,8 @@ export interface PendingProva {
   tags: string[];
   /** Il giocatore sta scegliendo quale tratto ferire. */
   choosingWound: boolean;
-  /** Il giocatore sta scegliendo quale dado mettere da parte (Piani a Lungo Termine). */
-  choosingDie: boolean;
+  /** Il giocatore sta scegliendo un dado: da mettere da parte (Piani a Lungo Termine) o da trasformare in 6 (Fuori dagli Schemi). */
+  choosingDie: 'aside' | 'boost' | null;
   /** 'tiro': Riff e assorbimento; 'spesa': successi e shock da spendere. */
   phase: 'tiro' | 'spesa';
   spend: SpendState;
@@ -51,7 +51,7 @@ export class PendingStore {
       ...p,
       id,
       choosingWound: false,
-      choosingDie: false,
+      choosingDie: null,
       phase: 'tiro',
       solo: null,
       spend: { successes: 0, shocks: 0, log: [], noConvert: false, converted: 0 },
