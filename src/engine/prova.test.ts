@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   absorb,
+  addPlanned,
+  canAddPlanned,
+  canSetAside,
+  setAside,
   buildPool,
   canAbsorb,
   canPush,
@@ -151,5 +155,43 @@ describe('Ritmo al posto delle Cartucce', () => {
     const a = absorb(r, { kind: 'cartuccia', ritmo: true });
     expect(a.absorbed).toEqual([{ kind: 'cartuccia', ritmo: true }]);
     expect(canAbsorb(a, 'cartuccia')).toBe(false);
+  });
+});
+
+describe('Piani a Lungo Termine', () => {
+  it('il dado messo da parte non conta più nel tiro e si può mettere da parte una volta sola', () => {
+    const r = evaluate(base({ difficulty: 10 }), kept(6, 6, 2));
+    expect(r.sum).toBe(14);
+    expect(r.doubleSix).toBe(true);
+    const out = setAside(r, 0)!;
+    expect(out.value).toBe(6);
+    expect(out.result.sum).toBe(8);
+    expect(out.result.doubleSix).toBe(false);
+    expect(out.result.dice[0]).toMatchObject({ kept: false, aside: true });
+    expect(canSetAside(out.result)).toBe(false);
+    expect(setAside(out.result, 1)).toBeNull();
+  });
+
+  it('non si mette da parte dopo aver assorbito o spinto', () => {
+    const r = evaluate(base(), kept(1, 3, 4));
+    expect(canSetAside(absorb(r, { kind: 'cartuccia' }))).toBe(false);
+    expect(canSetAside(push(r))).toBe(false);
+  });
+
+  it('il dado conservato si aggiunge con lo stesso valore, una volta per Prova', () => {
+    const r = evaluate(base({ difficulty: 10 }), kept(6, 1, 2));
+    const out = addPlanned(r, 6);
+    expect(out.sum).toBe(15);
+    expect(out.doubleSix).toBe(true);
+    expect(out.dice.at(-1)).toMatchObject({ value: 6, kept: true, fromPlan: true });
+    expect(canAddPlanned(out)).toBe(false);
+    expect(addPlanned(out, 5).dice).toHaveLength(4);
+  });
+
+  it('un dado conservato che vale 1 aggiunge anche lo shock', () => {
+    const r = evaluate(base(), kept(3, 4));
+    expect(addPlanned(r, 1).shocks).toBe(1);
+    expect(r.shocks).toBe(1);
+    expect(addPlanned(evaluate(base(), kept(3, 1)), 1).shocks).toBe(2);
   });
 });

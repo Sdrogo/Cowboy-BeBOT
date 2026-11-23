@@ -84,6 +84,7 @@ export async function handleEndComponent(i: ButtonInteraction, ctx: Context): Pr
         ctx.characters.save({
           ...c,
           ritmo: 0,
+          reservedDie: null,
           cartridges: cleared ? 0 : c.cartridges,
           traits: c.traits.map((t) => (t.wound === 2 ? { ...t, wound: 0 } : t)),
         });

@@ -113,7 +113,9 @@ function dieFace(d: Die, size: number, accent: string): Node {
 function dieCaption(d: Die, result: ProvaResult, accent: string): Node {
   let text = ' ';
   let color = MUTED;
-  if (!d.kept) text = 'SCARTATO';
+  if (d.aside) text = 'DA PARTE';
+  else if (!d.kept) text = 'SCARTATO';
+  else if (d.fromPlan && d.value !== 6 && d.value !== 1) text = 'PIANO';
   else if (d.value === 6) {
     text = 'SEI';
     color = accent;

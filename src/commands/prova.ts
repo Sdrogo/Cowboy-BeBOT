@@ -11,7 +11,7 @@ import {
   type InteractionUpdateOptions,
   type StringSelectMenuInteraction,
 } from 'discord.js';
-import { absorb, canAbsorb, canPush, push, rollProva, type ProvaResult } from '../engine/prova.js';
+import { absorb, addPlanned, canAbsorb, canAddPlanned, canPush, canSetAside, push, rollProva, setAside, type ProvaResult } from '../engine/prova.js';
 import { MAX_CARTRIDGES, TURNS, isApproach, usableTraitSlots, type Approach } from '../engine/rules.js';
 import { RIFF_MIN_TURN, cartridgeRule, type CartridgeRule, type Clock } from '../engine/session.js';
 import type { Context, PendingProva } from '../context.js';
@@ -156,6 +156,10 @@ function intro(p: PendingProva, c: Character, game: Game): string {
       const n = r.input.cartridges;
       lines.push(`-# Farsi coinvolgere: ${r.input.ritmoInstead ? (n === 1 ? '1 Ritmo speso' : `${n} Ritmo spesi`) : n === 1 ? '1 Cartuccia segnata' : `${n} Cartucce segnate`}.`);
     }
+    const aside = r.dice.find((d) => d.aside);
+    if (aside) lines.push(`-# Piani a Lungo Termine: il dado ${aside.value} è messo da parte per una Prova successiva.`);
+    const planned = r.dice.find((d) => d.fromPlan);
+    if (planned) lines.push(`-# Piani a Lungo Termine: aggiunto il dado messo da parte (${planned.value}).`);
     if (p.solo) lines.push(`-# Assolo di ${p.solo.name}: +1 successo da spendere.`);
     if (p.tags.includes('INSEGUIMENTO') && r.pushed) lines.push('-# Inseguimento: spinto al limite in automatico.');
   } else {
@@ -207,10 +211,36 @@ function rollRows(p: PendingProva, c: Character, rule: CartridgeRule): Row[] {
     );
   }
   buttons.push(new ButtonBuilder().setCustomId(cid(p, 'done')).setLabel('Conferma e spendi').setStyle(ButtonStyle.Success));
+  const second = [soloButton(p)];
+  // Piani a Lungo Termine (p. 71): metti da parte un dado, o aggiungi quello già conservato.
+  if (r.input.groove === 'piani-a-lungo-termine') {
+    second.push(
+      c.reservedDie !== null
+        ? new ButtonBuilder()
+            .setCustomId(cid(p, 'plan'))
+            .setLabel(`Aggiungi il dado messo da parte (${c.reservedDie})`)
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(!canAddPlanned(r))
+        : new ButtonBuilder()
+            .setCustomId(cid(p, 'plan'))
+            .setLabel('Piani: metti da parte un dado')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(!canSetAside(r)),
+    );
+  }
   const rows: Row[] = [
     new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons),
-    new ActionRowBuilder<ButtonBuilder>().addComponents(soloButton(p)),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(...second),
   ];
+  if (p.choosingDie) {
+    const menu = new StringSelectMenuBuilder()
+      .setCustomId(cid(p, 'plansel'))
+      .setPlaceholder('Quale dado conservi per dopo?')
+      .addOptions(
+        r.dice.flatMap((d, k) => (d.kept ? [{ label: `Dado ${k + 1}: ${d.value}`, value: String(k) }] : [])),
+      );
+    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu));
+  }
   if (p.choosingWound) {
     const menu = new StringSelectMenuBuilder()
       .setCustomId(cid(p, 'woundsel'))
@@ -316,7 +346,7 @@ function altText(r: ProvaResult, name: string): string {
 // --- Pulsanti ---
 
 /** Azioni del giocatore che ha tirato e azioni del Big Shot. */
-const PLAYER_ACTIONS = new Set(['push', 'wound', 'woundsel', 'cart', 'rit', 'done', 'sclock', 'sdiff']);
+const PLAYER_ACTIONS = new Set(['push', 'wound', 'woundsel', 'cart', 'rit', 'plan', 'plansel', 'done', 'sclock', 'sdiff']);
 const BIG_SHOT_ACTIONS = new Set(['kclock', 'kdiff', 'krisk', 'r1', 'r2']);
 
 export async function handleProvaComponent(i: ButtonInteraction | StringSelectMenuInteraction, ctx: Context): Promise<void> {
@@ -374,6 +404,26 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
           c = ctx.characters.save(setCartridges(c, c.cartridges + 1));
         }
         break;
+      case 'plan':
+        if (p.result.input.groove !== 'piani-a-lungo-termine') break;
+        if (c.reservedDie !== null) {
+          // Il dado conservato torna con lo stesso valore che aveva (p. 71).
+          if (!canAddPlanned(p.result)) break;
+          p.result = addPlanned(p.result, c.reservedDie);
+          c = ctx.characters.save({ ...c, reservedDie: null });
+        } else if (canSetAside(p.result)) {
+          p.choosingDie = true;
+        }
+        break;
+      case 'plansel': {
+        p.choosingDie = false;
+        if (!i.isStringSelectMenu() || c.reservedDie !== null) break;
+        const out = setAside(p.result, Number(i.values[0]));
+        if (!out) break;
+        p.result = out.result;
+        c = ctx.characters.save({ ...c, reservedDie: out.value });
+        break;
+      }
       case 'rit':
         // Ritmo al posto della Cartuccia per assorbire uno shock (pp. 42, 46, 52).
         if (cartridgeRule(game.sessionType) !== 'cartucce' && canAbsorb(p.result, 'cartuccia') && c.ritmo >= 1) {
@@ -403,6 +453,7 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
       case 'done':
         p.phase = 'spesa';
         p.choosingWound = false;
+        p.choosingDie = false;
         s.successes = p.result.successes + (p.solo ? 1 : 0);
         s.shocks = p.result.shocksLeft;
         if (p.solo) s.log.push(`Assolo di ${p.solo.name}: +1 successo da spendere.`);
