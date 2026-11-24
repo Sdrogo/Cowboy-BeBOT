@@ -418,8 +418,10 @@ export async function handleProvaComponent(i: ButtonInteraction | StringSelectMe
   }
   const game = ctx.games.get(p.channelId);
   const isBigShot = !game.bigShotId || game.bigShotId === i.user.id;
-  if (PLAYER_ACTIONS.has(action) && i.user.id !== p.userId) {
-    await i.reply({ content: 'Solo chi ha tirato decide come usare i suoi successi.', flags: MessageFlags.Ephemeral });
+  // Il Big Shot dichiarato può usare i pulsanti di chiunque; senza Big Shot vale solo chi ha tirato.
+  const isDeclaredBigShot = !!game.bigShotId && game.bigShotId === i.user.id;
+  if (PLAYER_ACTIONS.has(action) && i.user.id !== p.userId && !isDeclaredBigShot) {
+    await i.reply({ content: 'Solo chi ha tirato (o il Big Shot) decide come usare i suoi successi.', flags: MessageFlags.Ephemeral });
     return;
   }
   if (BIG_SHOT_ACTIONS.has(action) && !isBigShot) {
